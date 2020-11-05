@@ -1,0 +1,24 @@
+kind: pipeline
+name: snowsync
+type: kubernetes
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+
+- name: make
+  pull: if-not-exists
+  image: golang:1.15
+  commands:
+  - apt update && apt install -y zip
+  - mkdir bin
+  - make
+  - ls -lah bin/
+
+- name: sonar-scan
+  image: quay.io/ukhomeofficedigital/sonar-scanner:v4.5
+  when:
+    event:
+    - pull_request

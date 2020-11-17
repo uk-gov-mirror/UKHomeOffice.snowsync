@@ -1,0 +1,35 @@
+{
+  "cases": [
+    {
+      "issue": {
+        "key": "abc-1",
+        "fields": {
+          "cluster": "prod",
+          "component": "system",
+          "description": "not responding for 10 mins",
+          "summary": "system down",
+          "priority": "P1",
+          "status": {
+            "name": "open"
+          },
+          "comment": {
+            "comments": [
+              {
+                "id": "1",
+                "author": {
+                  "name": "bob"
+                },
+                "body": "first comment"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "issue": {
+        "key": "abc-2"
+      }
+    }
+  ]
+}

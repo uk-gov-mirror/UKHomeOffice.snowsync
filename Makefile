@@ -1,13 +1,16 @@
-.PHONY: clean test build zip
+.PHONY: clean vet test build zip
 
-default: clean test build zip
+default: clean vet test build zip
 
 clean:
 	rm -rf bin/*
 
+vet:
+	go vet -v ./...
+
 test:
 	go test -v -coverprofile=cover.out -json > tests.out ./...
-	awk 'BEGIN{IGNORECASE=1} /\"coverage/{print $0}' tests.out
+	awk '/\"coverage/{print $0}' tests.out
 
 build:
 	GOOS=linux GOARCH=amd64 go build -v -o ./bin/ ./cmd/...

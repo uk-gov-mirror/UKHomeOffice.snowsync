@@ -1,3 +1,4 @@
+// Package api receives a webhook from JSD, parses its payload and writes it to SQS.
 package api
 
 import (
@@ -38,13 +39,13 @@ func (h *Handler) parseTicket(input string) (Ticket, error) {
 	}
 
 	// this is a placeholder for future change integration
-	// ca, err := parseChange( input)
+	// ca, err := parseChange(input)
 	// if err == nil {
 	// 	ca.sqs = h.mgr
 	// 	return ca, err
 	// }
 
-	return nil, fmt.Errorf("failed to parse the ticket")
+	return nil, fmt.Errorf("failed to parse the ticket: %v", err)
 }
 
 // Handle deals with the incoming request

@@ -1,3 +1,4 @@
+// Function checker starts a DynamoDB session and hands over to package checker.
 package main
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
-	"github.com/UKHomeOffice/snowsync/internal/checker"
+	"github.com/UKHomeOffice/snowsync/pkg/checker"
 )
 
 var sess *session.Session

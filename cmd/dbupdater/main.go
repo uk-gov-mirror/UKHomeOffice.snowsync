@@ -1,3 +1,4 @@
+// Function dbupdater starts a DynamoDB session and hands over to package dbupdater.
 package main
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
-	"github.com/UKHomeOffice/snowsync/internal/dbupdater"
+	"github.com/UKHomeOffice/snowsync/pkg/dbupdater"
 )
 
 var sess *session.Session

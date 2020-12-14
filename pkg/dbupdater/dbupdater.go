@@ -1,3 +1,4 @@
+// Package dbupdater writes a ticket update to DynamoDB.
 package dbupdater
 
 import (

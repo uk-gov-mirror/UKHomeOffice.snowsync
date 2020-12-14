@@ -1,11 +1,10 @@
+// Package client is a HTTP client.
 package client
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 )
 
 // Client is a HTTP client
@@ -14,16 +13,8 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-// Envelope is the JSON expected by SNOW
-type Envelope struct {
-	MsgID   string `json:"messageid,omitempty"`
-	ExtID   string `json:"external_identifier,omitempty"`
-	IntID   string `json:"internal_identifier,omitempty"`
-	Payload string `json:"payload,omitempty"`
-}
-
 // NewRequest creates a HTTP request
-func (c *Client) NewRequest(path string, body []byte) (*http.Request, error) {
+func (c *Client) NewRequest(path, method, user, pass string, body []byte) (*http.Request, error) {
 
 	p, err := url.Parse(path)
 	if err != nil {
@@ -31,7 +22,7 @@ func (c *Client) NewRequest(path string, body []byte) (*http.Request, error) {
 	}
 	u := c.BaseURL.ResolveReference(p)
 
-	req, err := http.NewRequest("POST", u.String(), bytes.NewBuffer(body))
+	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -40,16 +31,7 @@ func (c *Client) NewRequest(path string, body []byte) (*http.Request, error) {
 	}
 	req.Header.Set("Accept", "application/json")
 
-	cerr := fmt.Errorf("missing credentials")
-	admin, ok := os.LookupEnv("SNOW_USER")
-	if !ok {
-		return nil, cerr
-	}
-	password, ok := os.LookupEnv("SNOW_PASS")
-	if !ok {
-		return nil, cerr
-	}
-	req.SetBasicAuth(admin, password)
+	req.SetBasicAuth(user, pass)
 
 	return req, nil
 }

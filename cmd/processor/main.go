@@ -1,3 +1,4 @@
+// Function processor starts a Lambda session and hands over to package processor.
 package main
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 
-	"github.com/UKHomeOffice/snowsync/internal/processor"
+	"github.com/UKHomeOffice/snowsync/pkg/processor"
 	service "github.com/aws/aws-sdk-go/service/lambda"
 )
 

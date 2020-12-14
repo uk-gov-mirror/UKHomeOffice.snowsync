@@ -18,7 +18,5 @@ steps:
   - ls -lah bin/
 
 - name: sonar-scan
+  pull: if-not-exists
   image: quay.io/ukhomeofficedigital/sonar-scanner:v4.5
-  when:
-    event:
-    - pull_request

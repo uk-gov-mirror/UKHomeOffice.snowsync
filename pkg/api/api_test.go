@@ -1,12 +1,14 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/tidwall/gjson"
@@ -73,7 +75,7 @@ func TestIncident(t *testing.T) {
 		{name: "happy", input: 0, issueID: "abc-1", status: "open", summary: "system down",
 			description: "not responding for 10 mins", priority: "P1", component: "system",
 			cluster: "prod", commentID: "1", commentAuthor: "bob", commentBody: "first comment"},
-		{name: "unhappy", input: 1, err: "missing value in payload"},
+		{name: "unhappy", input: 1, err: "failed to parse the ticket: missing value in payload: issue.fields.component"},
 	}
 
 	for _, tc := range tt {
@@ -85,10 +87,36 @@ func TestIncident(t *testing.T) {
 				t.Fatalf("could not get message: %v", err)
 			}
 
+			rsg := json.RawMessage(msg)
+			p, err := json.Marshal(&rsg)
+			if err != nil {
+				t.Fatalf("could not make incoming payload: %v", err)
+			}
+
+			var res events.APIGatewayProxyResponse
+
+			req := events.APIGatewayProxyRequest{
+				Path: "/",
+				Body: string(p),
+			}
+
+			h := NewHandler(getMockSQS())
+			res, err = h.Handle(&req)
+			if err != nil {
+				t.Fatalf("could not call Handle: %v", err)
+			}
+
+			if tc.err != "" {
+				if msg := res.Body; msg != tc.err {
+					t.Errorf("expected error %q, got: %q", tc.err, msg)
+				}
+				return
+			}
+
 			ia, err := parseIncident(msg)
 			if err != nil {
 				if e := err.Error(); !strings.Contains(e, tc.err) {
-					t.Errorf("expected error %q, got: %q", tc.err, e)
+					t.Errorf("expected no error, got: %q", e)
 				}
 				return
 			}
@@ -124,7 +152,7 @@ func TestIncident(t *testing.T) {
 				t.Errorf("expected %v, got %v", tc.commentBody, ia.incident.Comments[0].Body)
 			}
 
-			ia.sqs = getMockSQS()
+			ia.sqs = h.mgr
 			err = ia.publish()
 			if err != nil {
 				if e := err.Error(); !strings.Contains(e, tc.err) {

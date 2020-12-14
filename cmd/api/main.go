@@ -1,3 +1,4 @@
+// Function api starts a SQS session and hands over to package api.
 package main
 
 import (
@@ -9,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 
-	"github.com/UKHomeOffice/snowsync/internal/api"
+	"github.com/UKHomeOffice/snowsync/pkg/api"
 )
 
 var sess *session.Session

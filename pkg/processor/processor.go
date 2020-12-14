@@ -1,3 +1,4 @@
+// Package processor receives a SQS event and invokes other functions to handle JSD webhooks.
 package processor
 
 import (
@@ -9,8 +10,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/lambda"
-
-	"github.com/UKHomeOffice/snowsync/internal/client"
 )
 
 // Invoker invokes another lambda
@@ -30,15 +29,21 @@ func NewProcessor(i Invoker) *Processor {
 
 func (p *Processor) processCreateCall(eid string, payload []byte) (*lambda.InvokeOutput, error) {
 
-	e := client.Envelope{
-		MsgID:   "HO_SIAM_IN_REST_INC_POST_JSON_ACP_Incident_Create",
-		ExtID:   eid,
-		Payload: string(payload),
-	}
+	dat := make(map[string]interface{})
+	dat["messageid"] = "HO_SIAM_IN_REST_INC_POST_JSON_ACP_Incident_Create"
+	dat["external_identifier"] = eid
 
-	newTicket, err := json.Marshal(e)
+	pld := make(map[string]interface{})
+
+	err := json.Unmarshal([]byte(payload), &pld)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal caller payload: %v", err)
+		fmt.Printf("failed to unmarshal creator payload: %v", err)
+	}
+	dat["payload"] = pld
+
+	newTicket, err := json.Marshal(dat)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal creator payload: %v", err)
 	}
 
 	input := &lambda.InvokeInput{
@@ -60,7 +65,7 @@ func (p *Processor) processCreateRecord(payload []byte, io *lambda.InvokeOutput)
 	dat := make(map[string]interface{})
 	err := json.Unmarshal([]byte(payload), &dat)
 	if err != nil {
-		fmt.Printf("failed to unmarshal incoming payload: %v", err)
+		fmt.Printf("failed to unmarshal dbputter payload: %v", err)
 	}
 
 	dat["internal_identifier"] = strings.Trim(string(io.Payload), `", \`)
@@ -85,15 +90,21 @@ func (p *Processor) processCreateRecord(payload []byte, io *lambda.InvokeOutput)
 
 func (p *Processor) processUpdateCall(iid string, payload []byte) error {
 
-	e := client.Envelope{
-		MsgID:   "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update",
-		IntID:   iid,
-		Payload: string(payload),
-	}
+	dat := make(map[string]interface{})
+	dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+	dat["internal_identifier"] = iid
 
-	ticketUpdate, err := json.Marshal(e)
+	pld := make(map[string]interface{})
+
+	err := json.Unmarshal([]byte(payload), &pld)
 	if err != nil {
-		return fmt.Errorf("failed to marshal caller payload: %v", err)
+		fmt.Printf("failed to unmarshal updater payload: %v", err)
+	}
+	dat["payload"] = pld
+
+	ticketUpdate, err := json.Marshal(dat)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updater payload: %v", err)
 	}
 
 	input := &lambda.InvokeInput{
@@ -114,7 +125,7 @@ func (p *Processor) processUpdateRecord(payload []byte) error {
 	var dat map[string]interface{}
 	err := json.Unmarshal(payload, &dat)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal incoming payload: %v", err)
+		return fmt.Errorf("failed to unmarshal dbupdater payload: %v", err)
 	}
 
 	itemUpdate, err := json.Marshal(dat)
@@ -184,37 +195,95 @@ func (p *Processor) processCheckerResponse(io *lambda.InvokeOutput) (string, str
 	return eid, "", nil
 }
 
+func (p *Processor) check(pld []byte) (*lambda.InvokeOutput, error) {
+
+	// call checker lambda, expect external_identifier if it exists
+	input := &lambda.InvokeInput{
+		FunctionName: aws.String(os.Getenv("CHECKER_LAMBDA")),
+		Payload:      pld,
+	}
+
+	out, err := p.inv.Invoke(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to invoke checker function: %v", err)
+	}
+	return out, nil
+}
+
 // Process processes individual SQS messages
 func (p *Processor) Process(event *events.SQSEvent) error {
 
 	for _, message := range event.Records {
-		fmt.Printf("Processing message %s | %s", message.MessageId, message.Body)
-		raw := json.RawMessage(message.Body)
-		payload, err := json.Marshal(&raw)
-		if err != nil {
-			return fmt.Errorf("failed to marshal checker payload: %v", err)
-		}
+		fmt.Printf("Processing message %s | %s\n", message.MessageId, message.Body)
 
-		// call checker lambda, expect external_identifier if it exists
-		input := &lambda.InvokeInput{
-			FunctionName: aws.String(os.Getenv("CHECKER_LAMBDA")),
-			Payload:      payload,
-		}
-
-		res, err := p.inv.Invoke(input)
+		// note that we have to copy the slice and make a separate call per comment because 'comments' is
+		// currently a string, not an array. this results in duplication and needs fixing by SNOW.
+		var dat, copy map[string]interface{}
+		var payload []byte
+		err := json.Unmarshal([]byte(message.Body), &dat)
 		if err != nil {
-			return fmt.Errorf("failed to invoke checker function: %v", err)
+			return fmt.Errorf("failed to unmarshal SQS messsage: %v", err)
 		}
+		copy = dat
+		comments, ok := dat["comments"].([]interface{})
+		if !ok {
+			payload, err = json.Marshal(&dat)
+			if err != nil {
+				return fmt.Errorf("failed to marshal checker payload: %v", err)
+			}
 
-		eid, iid, err := p.processCheckerResponse(res)
-		if err != nil {
-			return fmt.Errorf("failed to process checker response: %v", err)
+			out, err := p.check(payload)
+			if err != nil {
+				return fmt.Errorf("failed to call checker: %v", err)
+			}
+
+			eid, iid, err := p.processCheckerResponse(out)
+			if err != nil {
+				return fmt.Errorf("failed to process checker response: %v", err)
+			}
+
+			if iid == "" {
+				err = p.startCreate(eid, payload)
+				if err != nil {
+					return fmt.Errorf("failed to start creator process: %v", err)
+				}
+				continue
+			}
+			err = p.startUpdate(iid, payload)
+			if err != nil {
+				return fmt.Errorf("failed to start updater process: %v", err)
+			}
+			continue
 		}
-		if iid != "" {
-			p.startUpdate(iid, payload)
-			return nil
+		for _, comment := range comments {
+			copy["comments"] = fmt.Sprintf("%v", comment)
+			payload, err = json.Marshal(&copy)
+			if err != nil {
+				return fmt.Errorf("failed to marshal checker payload: %v", err)
+			}
+
+			out, err := p.check(payload)
+			if err != nil {
+				return fmt.Errorf("failed to call checker: %v", err)
+			}
+
+			eid, iid, err := p.processCheckerResponse(out)
+			if err != nil {
+				return fmt.Errorf("failed to process checker response: %v", err)
+			}
+
+			if iid == "" {
+				err = p.startCreate(eid, payload)
+				if err != nil {
+					return fmt.Errorf("failed to start creator process: %v", err)
+				}
+				continue
+			}
+			err = p.startUpdate(iid, payload)
+			if err != nil {
+				return fmt.Errorf("failed to start updater process: %v", err)
+			}
 		}
-		p.startCreate(eid, payload)
 	}
 	return nil
 }

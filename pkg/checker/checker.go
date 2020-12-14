@@ -1,3 +1,4 @@
+// Package checker queries DynamoDB and returns a SNOW identifier if one exists.
 package checker
 
 import (
@@ -32,15 +33,6 @@ type Result struct {
 
 // Check checks if a prior db record has snow identifier
 func (c *Checker) Check(payload map[string]interface{}) (Result, error) {
-
-	fmt.Printf("debug payload: %+v\n", payload)
-
-	// dynamically decode payload
-	// var dat map[string]interface{}
-	// err := json.Unmarshal(payload, &dat)
-	// if err != nil {
-	// 	return Result{}, fmt.Errorf("failed to unmarshal payload: %v", err)
-	// }
 
 	eid := payload["external_identifier"].(string)
 

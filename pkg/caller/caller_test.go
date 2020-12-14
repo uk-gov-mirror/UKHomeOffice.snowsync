@@ -9,7 +9,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/UKHomeOffice/snowsync/internal/client"
 	"github.com/tidwall/gjson"
 )
 
@@ -43,14 +42,13 @@ func TestCaller(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 
-			os.Setenv("SNOW_USER", tc.user)
-			os.Setenv("SNOW_PASS", tc.pass)
+			os.Setenv("ADMIN_USER", tc.user)
+			os.Setenv("ADMIN_PASS", tc.pass)
 
-			e := client.Envelope{
-				MsgID:   "CUSTOM MESSAGE",
-				ExtID:   tc.extID,
-				Payload: tc.payload,
-			}
+			dat := make(map[string]interface{})
+			dat["messageid"] = "CUSTOM MESSAGE"
+			dat["external_identifier"] = tc.extID
+			dat["payload"] = []byte(tc.payload)
 
 			testSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -69,7 +67,7 @@ func TestCaller(t *testing.T) {
 					t.Errorf("could not read request body: %v", sa)
 				}
 
-				env, err := json.Marshal(e)
+				env, err := json.Marshal(&dat)
 				if err != nil {
 					t.Fatalf("could not marshal comparator")
 				}
@@ -99,7 +97,10 @@ func TestCaller(t *testing.T) {
 			}))
 
 			os.Setenv("SNOW_URL", testSrv.URL)
-			_, err := Call(e)
+			_, err := CallSNOW(dat)
+			if err != nil {
+				t.Fatalf("could not marshal comparator")
+			}
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}

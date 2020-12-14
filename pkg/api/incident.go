@@ -14,12 +14,13 @@ import (
 type Incident struct {
 	Cluster     string    `json:"cluster,omitempty"`
 	Comments    []Comment `json:"comments,omitempty"`
-	Component   string    `json:"business_service,omitempty"`
+	Component   string    `json:"components,omitempty"`
 	Description string    `json:"description,omitempty"`
 	Identifier  string    `json:"external_identifier,omitempty"`
 	Priority    string    `json:"priority,omitempty"`
-	Status      string    `json:"status,omitempty"`
-	Summary     string    `json:"summary,omitempty"`
+	Service     string    `json:"business_service,omitempty"`
+	Status      string    `json:"state,omitempty"`
+	Summary     string    `json:"title,omitempty"`
 }
 
 // Comment is an individual post
@@ -55,11 +56,11 @@ func checkVars(input string) error {
 	for _, v := range vars {
 		field, ok := os.LookupEnv(v)
 		if !ok {
-			return fmt.Errorf("missing environment variable")
+			return fmt.Errorf("missing environment variable: %v", v)
 		}
 		value := gjson.Get(input, field)
 		if !value.Exists() {
-			return fmt.Errorf("missing value in payload")
+			return fmt.Errorf("missing value in payload: %v", field)
 		}
 	}
 	return nil
@@ -82,6 +83,7 @@ func parseIncident(input string) (*incidentUpdate, error) {
 	}
 
 	i := NewIncident()
+	i.Service = "AWS ACP"
 	i.Cluster = gjson.Get(input, os.Getenv("CLUSTER_FIELD")).Str
 	i.Component = gjson.Get(input, os.Getenv("COMPONENT_FIELD")).Str
 	i.Description = gjson.Get(input, os.Getenv("DESCRIPTION_FIELD")).Str
@@ -98,13 +100,14 @@ func parseIncident(input string) (*incidentUpdate, error) {
 
 	u := incidentUpdate{incident: i}
 	fmt.Printf("parsed incident: %v, status: %v\n", i.Identifier, i.Status)
+
 	return &u, nil
 }
 
 // publish writes an incident update to SQS
-func (i *incidentUpdate) publish() error {
+func (iu *incidentUpdate) publish() error {
 
-	sm, err := json.Marshal(i.incident)
+	sm, err := json.Marshal(&iu.incident)
 	if err != nil {
 		return fmt.Errorf("failed to marshal SQS payload: %s", err)
 	}
@@ -114,7 +117,7 @@ func (i *incidentUpdate) publish() error {
 		QueueUrl:    aws.String(os.Getenv("QUEUE_URL")),
 	}
 
-	_, err = i.sqs.SendMessage(&in)
+	_, err = iu.sqs.SendMessage(&in)
 	if err != nil {
 		return fmt.Errorf("failed to publish incident: %s", err)
 	}

@@ -16,11 +16,14 @@ func TestClient(t *testing.T) {
 	tt := []struct {
 		name    string
 		path    string
+		method  string
+		user    string
+		pass    string
 		payload string
 		err     string
 	}{
-		{name: "happy", path: "/", payload: `{"foo":"bar"}`},
-		{name: "unhappy", path: "/", err: "missing credentials"},
+		{name: "happy", path: "/", method: "POST", user: "foo", pass: "bar", payload: `{"foo":"bar"}`},
+		{name: "unhappy", path: "/", method: "POST", user: "foo", pass: "bar", err: "missing credentials"},
 	}
 
 	for _, tc := range tt {
@@ -55,10 +58,10 @@ func TestClient(t *testing.T) {
 			}
 
 			if tc.err != "" {
-				os.Setenv("SNOW_USER", "foo")
-				os.Setenv("SNOW_PASS", "bar")
+				os.Setenv("ADMIN_USER", "foo")
+				os.Setenv("ADMIN_PASS", "bar")
 
-				req, err := c.NewRequest(tc.path, []byte(tc.payload))
+				req, err := c.NewRequest(tc.path, tc.method, tc.user, tc.pass, []byte(tc.payload))
 				if err != nil {
 					t.Fatalf("could not make request: %q", err)
 				}
@@ -74,7 +77,7 @@ func TestClient(t *testing.T) {
 				defer resp.Body.Close()
 			}
 
-			_, err := c.NewRequest(tc.path, []byte(tc.payload))
+			_, err := c.NewRequest(tc.path, tc.method, tc.user, tc.pass, []byte(tc.payload))
 			if err != nil {
 				if msg := err.Error(); !strings.Contains(msg, tc.err) {
 					t.Errorf("expected error %q, got: %q", tc.err, msg)

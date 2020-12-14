@@ -1,3 +1,4 @@
+// Package dbputter writes a new ticket to DynamoDB.
 package dbputter
 
 import (

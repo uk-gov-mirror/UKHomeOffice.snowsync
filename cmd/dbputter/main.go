@@ -1,3 +1,4 @@
+// Function dbputter starts a DynamoDB session and hands over to package dbputter.
 package main
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
-	"github.com/UKHomeOffice/snowsync/internal/dbputter"
+	"github.com/UKHomeOffice/snowsync/pkg/dbputter"
 )
 
 var sess *session.Session

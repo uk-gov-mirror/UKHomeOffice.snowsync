@@ -1,3 +1,4 @@
+// Package caller makes a HTTP request to SNOW to create/update a ticket and returns a SNOW identifier.
 package caller
 
 import (
@@ -9,15 +10,30 @@ import (
 	"os"
 	"time"
 
-	"github.com/UKHomeOffice/snowsync/internal/client"
+	"github.com/UKHomeOffice/snowsync/pkg/client"
 )
 
-// Call makes an outbound create request and returns a SNOW identifier
-func Call(e client.Envelope) (string, error) {
+// CallSNOW makes an outbound create request and returns a SNOW identifier
+func CallSNOW(ms map[string]interface{}) (string, error) {
 
-	surl, err := url.Parse(os.Getenv("SNOW_URL"))
+	base, ok := os.LookupEnv("SNOW_URL")
+	if !ok {
+		return "", fmt.Errorf("missing SNOW URL")
+	}
+
+	surl, err := url.Parse(base)
 	if err != nil {
-		return "", fmt.Errorf("no SNOW URL provided: %v", err)
+		return "", fmt.Errorf("could not parse SNOW URL: %v", err)
+	}
+
+	user, ok := os.LookupEnv("ADMIN_USER")
+	if !ok {
+		return "", fmt.Errorf("missing username")
+	}
+
+	pass, ok := os.LookupEnv("ADMIN_PASS")
+	if !ok {
+		return "", fmt.Errorf("missing password")
 	}
 
 	c := &client.Client{
@@ -25,12 +41,12 @@ func Call(e client.Envelope) (string, error) {
 		HTTPClient: &http.Client{Timeout: 5 * time.Second},
 	}
 
-	out, err := json.Marshal(e)
+	out, err := json.Marshal(&ms)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal snow payload: %v", err)
 	}
 
-	req, err := c.NewRequest("", out)
+	req, err := c.NewRequest("", "POST", user, pass, out)
 	if err != nil {
 		return "", fmt.Errorf("failed to make request: %v", err)
 	}

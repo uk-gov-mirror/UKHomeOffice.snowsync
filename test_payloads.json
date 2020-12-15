@@ -11,20 +11,15 @@
           "priority": "P1",
           "status": {
             "name": "open"
-          },
-          "comment": {
-            "comments": [
-              {
-                "id": "1",
-                "author": {
-                  "name": "bob"
-                },
-                "body": "first comment"
-              }
-            ]
           }
         }
-      }
+      },
+      "comment": {
+        "author": {
+          "name": "bob"
+        },              
+        "body": "first comment"
+        }      
     },
     {
       "issue": {

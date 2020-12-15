@@ -4,11 +4,11 @@ package main
 import (
 	"github.com/aws/aws-lambda-go/lambda"
 
-	"github.com/UKHomeOffice/snowsync/pkg/caller"
+	"github.com/UKHomeOffice/snowsync/pkg/outcaller"
 )
 
 func handler(ms map[string]interface{}) (string, error) {
-	return caller.CallSNOW(ms)
+	return outcaller.CallSNow(ms)
 }
 
 func main() {

@@ -1,4 +1,4 @@
-package api
+package outapi
 
 import (
 	"encoding/json"
@@ -32,7 +32,8 @@ func setEnv() {
 
 	os.Setenv("CLUSTER_FIELD", "issue.fields.cluster")
 	os.Setenv("COMPONENT_FIELD", "issue.fields.component")
-	os.Setenv("COMMENT_FIELD", "issue.fields.comment.comments")
+	os.Setenv("COMMENT_AUTHOR_FIELD", "comment.author.name")
+	os.Setenv("COMMENT_BODY_FIELD", "comment.body")
 	os.Setenv("DESCRIPTION_FIELD", "issue.fields.description")
 	os.Setenv("ISSUE_ID_FIELD", "issue.key")
 	os.Setenv("PRIORITY_FIELD", "issue.fields.priority")
@@ -58,24 +59,22 @@ func getMsg(p int) (string, error) {
 func TestIncident(t *testing.T) {
 
 	tt := []struct {
-		name          string
-		input         int
-		issueID       string
-		commentID     string
-		commentAuthor string
-		commentBody   string
-		component     string
-		cluster       string
-		description   string
-		priority      string
-		status        string
-		summary       string
-		err           string
+		name        string
+		input       int
+		issueID     string
+		comment     string
+		component   string
+		cluster     string
+		description string
+		priority    string
+		status      string
+		summary     string
+		err         string
 	}{
 		{name: "happy", input: 0, issueID: "abc-1", status: "open", summary: "system down",
 			description: "not responding for 10 mins", priority: "P1", component: "system",
-			cluster: "prod", commentID: "1", commentAuthor: "bob", commentBody: "first comment"},
-		{name: "unhappy", input: 1, err: "failed to parse the ticket: missing value in payload: issue.fields.component"},
+			cluster: "prod", comment: "bob: first comment"},
+		{name: "unhappy", input: 1, err: "could not parse the ticket: missing value in payload: issue.fields.component"},
 	}
 
 	for _, tc := range tt {
@@ -142,14 +141,8 @@ func TestIncident(t *testing.T) {
 			if ia.incident.Summary != tc.summary {
 				t.Errorf("expected %v, got %v", tc.summary, ia.incident.Summary)
 			}
-			if ia.incident.Comments[0].ID != tc.commentID {
-				t.Errorf("expected %v, got %v", tc.commentID, ia.incident.Comments[0].ID)
-			}
-			if ia.incident.Comments[0].Author != tc.commentAuthor {
-				t.Errorf("expected %v, got %v", tc.commentAuthor, ia.incident.Comments[0].Author)
-			}
-			if ia.incident.Comments[0].Body != tc.commentBody {
-				t.Errorf("expected %v, got %v", tc.commentBody, ia.incident.Comments[0].Body)
+			if ia.incident.Comment != tc.comment {
+				t.Errorf("expected %v, got %v", tc.comment, ia.incident.Comment)
 			}
 
 			ia.sqs = h.mgr

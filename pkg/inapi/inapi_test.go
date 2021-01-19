@@ -1,4 +1,4 @@
-package receiver
+package inapi
 
 import (
 	"encoding/json"
@@ -21,19 +21,19 @@ type mockDynamoDB struct {
 	err error
 }
 
-func (md *mockDynamoDB) UpdateItem(input *dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
-	output := new(dynamodb.UpdateItemOutput)
+func (md *mockDynamoDB) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+	output := new(dynamodb.PutItemOutput)
 
-	null := &dynamodb.UpdateItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
+	null := &dynamodb.PutItemInput{
+		Item: map[string]*dynamodb.AttributeValue{
 			"external_identifier": {
 				S: aws.String(""),
 			},
 		},
 	}
 
-	if cmp.Equal(input.Key, null.Key) {
-		return nil, errors.New("failed to update db: ")
+	if cmp.Equal(input.Item, null.Item) {
+		return nil, errors.New("unexpected payload")
 	}
 
 	return output, md.err
@@ -44,13 +44,12 @@ func TestHandle(t *testing.T) {
 	tt := []struct {
 		name              string
 		supplierReference string
-		commentID         string
 		commentAuthor     string
 		commentBody       string
 		err               string
 	}{
-		{name: "happy", supplierReference: "abc-123", commentID: "2", commentAuthor: "alice", commentBody: "second comment"},
-		{name: "unhappy", err: "failed to update db: failed to update db: "},
+		{name: "happy", supplierReference: "abc-123", commentAuthor: "alice", commentBody: "second comment"},
+		{name: "unhappy", err: "JSD call failed with status code: 400"},
 	}
 
 	for _, tc := range tt {
@@ -117,8 +116,8 @@ func TestHandle(t *testing.T) {
 			}
 
 			if tc.err == "" {
-				if res.StatusCode != http.StatusOK {
-					t.Errorf("expected status OK, got %v", res.StatusCode)
+				if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
+					t.Errorf("expected %v, got %v", http.StatusCreated, res.StatusCode)
 				}
 			}
 			if msg := res.Body; msg != tc.err {

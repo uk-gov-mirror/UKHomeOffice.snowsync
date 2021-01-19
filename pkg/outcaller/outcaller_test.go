@@ -1,4 +1,4 @@
-package caller
+package outcaller
 
 import (
 	"encoding/json"
@@ -97,7 +97,7 @@ func TestCaller(t *testing.T) {
 			}))
 
 			os.Setenv("SNOW_URL", testSrv.URL)
-			_, err := CallSNOW(dat)
+			_, err := CallSNow(dat)
 			if err != nil {
 				t.Fatalf("could not marshal comparator")
 			}

@@ -3,7 +3,7 @@
       {
         "messageId" : "MessageID_1",
         "receiptHandle" : "MessageReceiptHandle",
-        "body" : "{\"internal_identifier\": \"inc-123\",\"comments\":[{\"body\": \"first comment\",\"id\": \"01\",\"owner\": \"bob\"}]}",
+        "body" : "{\"internal_identifier\":\"inc-123\",\"comments\":\"bob says hello\",\"status\":\"1\"}",
         "md5OfBody" : "fce0ea8dd236ccb3ed9b37dae260836f",
         "md5OfMessageAttributes" : "582c92c5c5b6ac403040a4f3ab3115c9",
         "eventSourceARN": "arn:aws:sqs:us-west-2:123456789012:SQSQueue",

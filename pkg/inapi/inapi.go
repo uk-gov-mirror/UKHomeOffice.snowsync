@@ -1,6 +1,6 @@
-// Package receiver handles a webhook from SNOW, writes its payload to DynamoDB and and makes a HTTP request to JSD to update a ticket.
-// This is a temporary all in one function until SNOW implements ACP bound transactions.
-package receiver
+// Package inapi handles a webhook from SNow, writes its payload to DynamoDB and and makes a HTTP request to JSD to update a ticket.
+// This is a temporary all in one function until SNow implements ACP bound transactions.
+package inapi
 
 import (
 	"encoding/json"
@@ -13,16 +13,17 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
 	"github.com/UKHomeOffice/snowsync/pkg/client"
 )
 
 // DBUpdater is an abstraction
 type DBUpdater interface {
-	UpdateItem(*dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error)
+	PutItem(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
 }
 
-// Receiver adds SNOW comments to JSD tickets
+// Receiver adds SNow comments to JSD tickets
 type Receiver struct {
 	ddb DBUpdater
 }
@@ -32,50 +33,47 @@ func NewReceiver(du DBUpdater) *Receiver {
 	return &Receiver{ddb: du}
 }
 
-// AddUpdateToDB adds a SNOW generated update to DynamoDB
+// AddUpdateToDB adds a SNow generated update to DynamoDB
 func (r *Receiver) AddUpdateToDB(b []byte) error {
 
 	// get id and comments
 	dat := map[string]string{}
 	err := json.Unmarshal(b, &dat)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal update: %v", err)
-	}
-	eid := dat["supplier_reference"]
-	com := dat["comments"]
-
-	input := &dynamodb.UpdateItemInput{
-		TableName:        aws.String(os.Getenv("TABLE_NAME")),
-		UpdateExpression: aws.String("SET comments = :com"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":com": {
-				S: aws.String(com),
-			},
-		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"external_identifier": {
-				S: aws.String(eid),
-			},
-		},
+		return fmt.Errorf("could not unmarshal update: %v", err)
 	}
 
-	_, err = r.ddb.UpdateItem(input)
+	// temporary workaround to fit with current SNOW template
+	dat["external_identifier"] = dat["supplier_reference"]
+	delete(dat, "supplier_reference")
+
+	item, err := dynamodbattribute.MarshalMap(dat)
 	if err != nil {
-		return fmt.Errorf("failed to update db: %v", err)
+		return fmt.Errorf("could not marshal db record: %s", err)
 	}
 
-	fmt.Printf("%v updated on db", eid)
+	input := &dynamodb.PutItemInput{
+		Item:      item,
+		TableName: aws.String(os.Getenv("TABLE_NAME")),
+	}
+
+	_, err = r.ddb.PutItem(input)
+	if err != nil {
+		return fmt.Errorf("could not put to db: %v", err)
+	}
+
+	fmt.Printf("%v updated on db", dat["external_identifier"])
 	return nil
 }
 
-// CallJSD adds a SNOW generated update to JSD issue
+// CallJSD adds a SNow generated update to JSD issue
 func (r *Receiver) CallJSD(b []byte) error {
 
 	// get id and comments
 	dat := map[string]string{}
 	err := json.Unmarshal(b, &dat)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal JSD payload: %v", err)
+		return fmt.Errorf("could not unmarshal JSD payload: %v", err)
 	}
 	eid := dat["supplier_reference"]
 	com := dat["comments"]
@@ -88,7 +86,7 @@ func (r *Receiver) CallJSD(b []byte) error {
 
 	out, err := json.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSD payload: %v", err)
+		return fmt.Errorf("could not marshal JSD payload: %v", err)
 	}
 
 	base, ok := os.LookupEnv("JSD_URL")
@@ -117,24 +115,24 @@ func (r *Receiver) CallJSD(b []byte) error {
 
 	req, err := c.NewRequest("", "POST", user, pass, out)
 	if err != nil {
-		return fmt.Errorf("failed to make request: %v", err)
+		return fmt.Errorf("could not make request: %v", err)
 	}
 
 	res, err := c.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to call JSD: %v", err)
+		return fmt.Errorf("could not call JSD: %v", err)
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		return fmt.Errorf("JSD call failed: %v", res.StatusCode)
+	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
+		return fmt.Errorf("JSD call failed with status code: %v", res.StatusCode)
 	}
 
 	fmt.Printf("%v updated on JSD", eid)
 	return nil
 }
 
-// Handle deals with the incoming request from SNOW
+// Handle deals with the incoming request from SNow
 func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
 	err := r.AddUpdateToDB([]byte(request.Body))

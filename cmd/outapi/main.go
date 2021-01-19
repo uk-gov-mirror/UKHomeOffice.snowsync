@@ -1,4 +1,4 @@
-// Function processor starts a Lambda session and hands over to package processor.
+// Function api starts a SQS session and hands over to package api.
 package main
 
 import (
@@ -8,23 +8,23 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
 
-	"github.com/UKHomeOffice/snowsync/pkg/processor"
-	service "github.com/aws/aws-sdk-go/service/lambda"
+	"github.com/UKHomeOffice/snowsync/pkg/outapi"
 )
 
 var sess *session.Session
-var svc *service.Lambda
+var esqs *sqs.SQS
 
 func init() {
 	sess = session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
-	svc = service.New(sess, &aws.Config{Region: aws.String(os.Getenv("AWS_REGION"))})
+	esqs = sqs.New(sess, &aws.Config{Region: aws.String(os.Getenv("AWS_REGION"))})
 }
 
-func handler(sqsEvent *events.SQSEvent) error {
-	return processor.NewProcessor(svc).Process(sqsEvent)
+func handler(req *events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	return outapi.NewHandler(esqs).Handle(req)
 }
 
 func main() {

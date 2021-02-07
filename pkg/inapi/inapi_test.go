@@ -1,128 +1,112 @@
 package inapi
 
-import (
-	"encoding/json"
-	"errors"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"testing"
+// type mockDynamoDB struct {
+// 	dynamodbiface.DynamoDBAPI
+// 	err error
+// }
 
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/google/go-cmp/cmp"
-)
+// func (md *mockDynamoDB) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+// 	output := new(dynamodb.PutItemOutput)
 
-type mockDynamoDB struct {
-	dynamodbiface.DynamoDBAPI
-	err error
-}
+// 	null := &dynamodb.PutItemInput{
+// 		Item: map[string]*dynamodb.AttributeValue{
+// 			"external_identifier": {
+// 				S: aws.String(""),
+// 			},
+// 		},
+// 	}
 
-func (md *mockDynamoDB) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
-	output := new(dynamodb.PutItemOutput)
+// 	if cmp.Equal(input.Item, null.Item) {
+// 		return nil, errors.New("unexpected payload")
+// 	}
 
-	null := &dynamodb.PutItemInput{
-		Item: map[string]*dynamodb.AttributeValue{
-			"external_identifier": {
-				S: aws.String(""),
-			},
-		},
-	}
+// 	return output, md.err
+// }
 
-	if cmp.Equal(input.Item, null.Item) {
-		return nil, errors.New("unexpected payload")
-	}
+// func TestHandle(t *testing.T) {
 
-	return output, md.err
-}
+// 	tt := []struct {
+// 		name              string
+// 		supplierReference string
+// 		commentAuthor     string
+// 		commentBody       string
+// 		err               string
+// 	}{
+// 		{name: "happy", supplierReference: "abc-123", commentAuthor: "alice", commentBody: "second comment"},
+// 		{name: "unhappy", err: "JSD call failed with status code: 400"},
+// 	}
 
-func TestHandle(t *testing.T) {
+// 	for _, tc := range tt {
+// 		t.Run(tc.name, func(t *testing.T) {
 
-	tt := []struct {
-		name              string
-		supplierReference string
-		commentAuthor     string
-		commentBody       string
-		err               string
-	}{
-		{name: "happy", supplierReference: "abc-123", commentAuthor: "alice", commentBody: "second comment"},
-		{name: "unhappy", err: "JSD call failed with status code: 400"},
-	}
+// 			testSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
+// 				if tc.err != "" {
+// 					w.WriteHeader(http.StatusBadRequest)
+// 					return
+// 				}
+// 				ct := r.Header.Get("Content-Type")
+// 				if ct != "application/json" {
+// 					t.Errorf("wrong content type: %v", ct)
+// 				}
 
-			testSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 				sa := r.Header.Get("Authorization")
+// 				if sa != "Basic Zm9vOmJhcg==" {
+// 					t.Errorf("wrong auth header: %v", sa)
+// 				}
 
-				if tc.err != "" {
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-				ct := r.Header.Get("Content-Type")
-				if ct != "application/json" {
-					t.Errorf("wrong content type: %v", ct)
-				}
+// 				body, err := ioutil.ReadAll(r.Body)
+// 				if err != nil {
+// 					t.Fatalf("could not read request body: %v", sa)
+// 				}
 
-				sa := r.Header.Get("Authorization")
-				if sa != "Basic Zm9vOmJhcg==" {
-					t.Errorf("wrong auth header: %v", sa)
-				}
+// 				ts := `{"body":"second comment"}`
 
-				body, err := ioutil.ReadAll(r.Body)
-				if err != nil {
-					t.Fatalf("could not read request body: %v", sa)
-				}
+// 				if string(body) != ts {
+// 					t.Errorf("expected %v, got %v", ts, string(body))
+// 				}
 
-				ts := `{"body":"second comment"}`
+// 				w.WriteHeader(http.StatusOK)
+// 			}))
 
-				if string(body) != ts {
-					t.Errorf("expected %v, got %v", ts, string(body))
-				}
+// 			os.Setenv("TABLE_NAME", "table")
+// 			os.Setenv("JSD_URL", testSrv.URL)
+// 			os.Setenv("ADMIN_USER", "foo")
+// 			os.Setenv("ADMIN_PASS", "bar")
 
-				w.WriteHeader(http.StatusOK)
-			}))
+// 			rec := NewReceiver(&mockDynamoDB{})
 
-			os.Setenv("TABLE_NAME", "table")
-			os.Setenv("JSD_URL", testSrv.URL)
-			os.Setenv("ADMIN_USER", "foo")
-			os.Setenv("ADMIN_PASS", "bar")
+// 			msg := struct {
+// 				SupplierReference string `json:"supplier_reference,omitempty"`
+// 				Comments          string `json:"comments,omitempty"`
+// 			}{
+// 				SupplierReference: tc.supplierReference,
+// 				Comments:          tc.commentBody,
+// 			}
 
-			rec := NewReceiver(&mockDynamoDB{})
+// 			p, err := json.Marshal(msg)
+// 			if err != nil {
+// 				t.Fatalf("could not make incoming payload: %v", err)
+// 			}
 
-			msg := struct {
-				SupplierReference string `json:"supplier_reference,omitempty"`
-				Comments          string `json:"comments,omitempty"`
-			}{
-				SupplierReference: tc.supplierReference,
-				Comments:          tc.commentBody,
-			}
+// 			req := events.APIGatewayProxyRequest{
+// 				Path: "/",
+// 				Body: string(p),
+// 			}
 
-			p, err := json.Marshal(msg)
-			if err != nil {
-				t.Fatalf("could not make incoming payload: %v", err)
-			}
+// 			res, err := rec.Handle(&req)
+// 			if err != nil {
+// 				t.Fatalf("could not call Handle: %v", err)
+// 			}
 
-			req := events.APIGatewayProxyRequest{
-				Path: "/",
-				Body: string(p),
-			}
-
-			res, err := rec.Handle(&req)
-			if err != nil {
-				t.Fatalf("could not call Handle: %v", err)
-			}
-
-			if tc.err == "" {
-				if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
-					t.Errorf("expected %v, got %v", http.StatusCreated, res.StatusCode)
-				}
-			}
-			if msg := res.Body; msg != tc.err {
-				t.Errorf("expected error %q, got: %q", tc.err, msg)
-			}
-		})
-	}
-}
+// 			if tc.err == "" {
+// 				if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
+// 					t.Errorf("expected %v, got %v", http.StatusCreated, res.StatusCode)
+// 				}
+// 			}
+// 			if msg := res.Body; msg != tc.err {
+// 				t.Errorf("expected error %q, got: %q", tc.err, msg)
+// 			}
+// 		})
+// 	}
+// }

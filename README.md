@@ -1,20 +1,15 @@
 ## snowsync
 
-[WIP]
-
 [![Go Report Card](https://goreportcard.com/badge/github.com/UKHomeOffice/SNowsync)](https://goreportcard.com/report/github.com/UKHomeOffice/snowsync)
 
-#### A suite of AWS Lambda functions to integrate ACP Service Desk with ServiceNow.
+These AWS Lambda functions aim to create a bi-directional incident ticketing integration between ACP Service Desk and ServiceNow.
 
-* [cmd/outapi](./cmd/outapi): Function outapi calls package outapi.
-* [pkg/outapi](./pkg/outapi): Package outapi receives a webhook from Service Desk, parses its payload and writes it to SQS.
+The functions are intended to cover a small set of use cases that meet ACP's specific needs, and their reusability in other circumstances is likely to be verry limited. As per the accompanying license, the code in this repo is provided "as is" and without warranty of any kind. It can change without notice or any regard for backwards compatibility.
 
-* [cmd/outprocessor](./cmd/outprocessor): Function outprocessor calls package outprocessor.
-* [pkg/outprocessor](./pkg/outprocessor): Package outprocessor receives a SQS event, queries/writes to DynamoDB and invokes other functions to handle SNOW bound requests.
+### ACP to ServiceNow
+When an incident ticket is raised, a webhook is sent from ACP Service Desk to AWS API Gateway which triggers [outapi](./pkg/outapi). The payload is parsed and written to AWS SQS which then triggers [outprocessor](./pkg/outprocessor). The incident is forwarded by [outcaller](./pkg/outcaller) on to ServiceNow which replicates the ticket and returns an identifier. This is written to AWS DynamoDB along with the original ticket details. 
 
-* [cmd/outcaller](./cmd/outcaller): Function outcaller calls package outcaller.
-* [pkg/outcaller](./pkg/outcaller): Package outcaller makes HTTP requests to SNOW to create/update a ticket.
-* [pkg/client](./pkg/client): Package client is a HTTP client.
+Subsequent updates to the tickets are made using this identifier. The database is checked at every transmission to find first a partial and then an exact match using ticket and comment identifiers. If no match is found, ticket creation workflow is triggered. If a partial match is found, comment update workflow is triggered. If an exact match is found, only ticket progress is updated.
 
-* [cmd/inapi](./cmd/ianapi): Function ianapi calls package ianapi.
-* [pkg/inapi](./pkg/ianapi): Package ianapi is a temporary all in one receiver function until SNOW implements ACP bound transactions.
+### ServiceNow to ACP
+Similarly, webhooks from ServiceNow trigger [inapi](./pkg/inapi) which parses the attached payload. The values are not writtten to SQS in this direction because of the need to return the ACP identifier in HTTP response. The ticket details are forwarded by [inprocessor](./pkg/inprocessor) to ACP Service Desk and written to DynamoDB. Further updates are made using the ACP provided identifier following the same workflow logic above.

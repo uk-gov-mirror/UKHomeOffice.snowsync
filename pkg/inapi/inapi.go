@@ -1,141 +1,53 @@
-// Package inapi handles a webhook from SNow, writes its payload to DynamoDB and and makes a HTTP request to JSD to update a ticket.
-// This is a temporary all in one function until SNow implements ACP bound transactions.
+// Package inapi receives a webhook from SNOW, parses its payload and calls inprocessor
 package inapi
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-
-	"github.com/UKHomeOffice/snowsync/pkg/client"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/lambda"
+	"github.com/aws/aws-sdk-go/service/lambda/lambdaiface"
 )
 
-// DBUpdater is an abstraction
-type DBUpdater interface {
-	PutItem(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
+// App defines client methods
+type App interface {
+	Invoke(*lambda.InvokeInput) (*lambda.InvokeOutput, error)
 }
 
-// Receiver adds SNow comments to JSD tickets
-type Receiver struct {
-	ddb DBUpdater
+// Forwarder is a lambda client
+type Forwarder struct {
+	Lambda lambdaiface.LambdaAPI
 }
 
-// NewReceiver returns a new receiver
-func NewReceiver(du DBUpdater) *Receiver {
-	return &Receiver{ddb: du}
+// Handler is our API
+type Handler struct {
+	fwd Forwarder
 }
 
-// AddUpdateToDB adds a SNow generated update to DynamoDB
-func (r *Receiver) AddUpdateToDB(b []byte) error {
-
-	// get id and comments
-	dat := map[string]string{}
-	err := json.Unmarshal(b, &dat)
-	if err != nil {
-		return fmt.Errorf("could not unmarshal update: %v", err)
-	}
-
-	// temporary workaround to fit with current SNOW template
-	dat["external_identifier"] = dat["supplier_reference"]
-	delete(dat, "supplier_reference")
-
-	item, err := dynamodbattribute.MarshalMap(dat)
-	if err != nil {
-		return fmt.Errorf("could not marshal db record: %s", err)
-	}
-
-	input := &dynamodb.PutItemInput{
-		Item:      item,
-		TableName: aws.String(os.Getenv("TABLE_NAME")),
-	}
-
-	_, err = r.ddb.PutItem(input)
-	if err != nil {
-		return fmt.Errorf("could not put to db: %v", err)
-	}
-
-	fmt.Printf("%v updated on db", dat["external_identifier"])
-	return nil
+// NewHandler returns a new Handler
+func NewHandler(f Forwarder) *Handler {
+	return &Handler{fwd: f}
 }
 
-// CallJSD adds a SNow generated update to JSD issue
-func (r *Receiver) CallJSD(b []byte) error {
-
-	// get id and comments
-	dat := map[string]string{}
-	err := json.Unmarshal(b, &dat)
-	if err != nil {
-		return fmt.Errorf("could not unmarshal JSD payload: %v", err)
-	}
-	eid := dat["supplier_reference"]
-	com := dat["comments"]
-
-	msg := struct {
-		Body string `json:"body,omitempty"`
-	}{
-		Body: com,
-	}
-
-	out, err := json.Marshal(msg)
-	if err != nil {
-		return fmt.Errorf("could not marshal JSD payload: %v", err)
-	}
-
-	base, ok := os.LookupEnv("JSD_URL")
-	if !ok {
-		return fmt.Errorf("no JSD URL provided: %v", err)
-	}
-
-	user, ok := os.LookupEnv("ADMIN_USER")
-	if !ok {
-		return fmt.Errorf("missing username")
-	}
-	pass, ok := os.LookupEnv("ADMIN_PASS")
-	if !ok {
-		return fmt.Errorf("missing password")
-	}
-
-	jurl, err := url.Parse(base + "/rest/api/2/issue/" + eid + "/comment")
-	if err != nil {
-		return fmt.Errorf("could not form JSD URL: %v", err)
-	}
-
-	c := &client.Client{
-		BaseURL:    jurl,
-		HTTPClient: &http.Client{Timeout: 5 * time.Second},
-	}
-
-	req, err := c.NewRequest("", "POST", user, pass, out)
-	if err != nil {
-		return fmt.Errorf("could not make request: %v", err)
-	}
-
-	res, err := c.Do(req)
-	if err != nil {
-		return fmt.Errorf("could not call JSD: %v", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
-		return fmt.Errorf("JSD call failed with status code: %v", res.StatusCode)
-	}
-
-	fmt.Printf("%v updated on JSD", eid)
-	return nil
+func newForwarder() *Forwarder {
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	alb := lambda.New(sess, &aws.Config{Region: aws.String(os.Getenv("AWS_REGION"))})
+	return &Forwarder{Lambda: alb}
 }
 
-// Handle deals with the incoming request from SNow
-func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+// Handle deals with the incoming request
+func Handle(request *events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	err := r.AddUpdateToDB([]byte(request.Body))
+	h := NewHandler(*newForwarder())
+
+	inc, err := parseIncident(request.Body)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusBadRequest,
@@ -143,15 +55,42 @@ func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGat
 		}, nil
 	}
 
-	err = r.CallJSD([]byte(request.Body))
+	out, err := json.Marshal(&inc)
 	if err != nil {
+		fmt.Println(err)
 		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusBadRequest,
+			StatusCode: http.StatusInternalServerError,
+			Body:       err.Error(),
+		}, nil
+	}
+
+	res, err := h.fwd.forward(out)
+	if err != nil {
+		fmt.Println(err)
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusInternalServerError,
 			Body:       err.Error(),
 		}, nil
 	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
+		Body:       fmt.Sprintf("incident %v updated\n", res),
 	}, nil
+}
+
+func (f *Forwarder) forward(b []byte) (string, error) {
+
+	input := &lambda.InvokeInput{
+		FunctionName: aws.String(os.Getenv("PROCESSOR_LAMBDA")),
+		Payload:      b,
+	}
+
+	out, err := f.Lambda.Invoke(input)
+	if err != nil {
+		return "", fmt.Errorf("could not call inprocessor: %v", err)
+	}
+
+	return string(out.Payload), nil
+
 }

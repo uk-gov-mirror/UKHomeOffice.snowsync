@@ -1,4 +1,4 @@
-package outprocessor
+package out
 
 import (
 	"fmt"
@@ -9,26 +9,27 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-func (d *Dynamo) checkPartial(p Payload) (bool, string, error) {
+func (d *Dynamo) checkPartial(inc *Incident) (bool, string, error) {
+
+	fmt.Printf("\nlooking up an existing record with id: %v\n", inc.Identifier)
 
 	partial := &dynamodb.QueryInput{
 		TableName:              aws.String(os.Getenv("TABLE_NAME")),
-		KeyConditionExpression: aws.String("external_identifier = :eid"),
+		KeyConditionExpression: aws.String("id = :id"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":eid": {
-				S: aws.String(p.ExtID),
+			":id": {
+				S: aws.String(inc.Identifier),
 			},
 		},
 	}
 
-	// look for just external_id match
 	resp, err := d.DynamoDB.Query(partial)
 	if err != nil {
 		return false, "", fmt.Errorf("could not get item: %v", err)
 	}
 
 	if int(*resp.Count) != 0 {
-		var pld Payload
+		var pld Incident
 		err = dynamodbattribute.UnmarshalMap(resp.Items[0], &pld)
 		if err != nil {
 			return false, "", fmt.Errorf("could not unmarshal item: %v", err)
@@ -38,60 +39,63 @@ func (d *Dynamo) checkPartial(p Payload) (bool, string, error) {
 		}
 		return false, "", fmt.Errorf("partial entry has no internal identifier")
 	}
+	fmt.Println("no partial match found")
 	return false, "", nil
 }
 
-func (d *Dynamo) checkExact(p Payload) (bool, string, error) {
+func (d *Dynamo) checkExact(inc *Incident) (bool, error) {
+
+	fmt.Printf("\nlooking up an existing record with id: %v and comment id: %v\n", inc.Identifier, inc.CommentID)
 
 	exact := &dynamodb.GetItemInput{
 		TableName: aws.String(os.Getenv("TABLE_NAME")),
 		Key: map[string]*dynamodb.AttributeValue{
-			"external_identifier": {
-				S: aws.String(p.ExtID),
+			"id": {
+				S: aws.String(inc.Identifier),
 			},
-			"comments": {
-				S: aws.String(p.Comment),
+			"comment_sysid": {
+				S: aws.String(inc.CommentID),
 			},
 		},
 	}
 
-	// look for external_id and comment match
 	resp, err := d.DynamoDB.GetItem(exact)
 	if err != nil {
-		return false, "", fmt.Errorf("could not get item: %v", err)
+		return false, fmt.Errorf("could not get item: %v", err)
 	}
 
 	if resp.Item != nil {
-		var pld Payload
+		var pld Incident
 		err = dynamodbattribute.UnmarshalMap(resp.Item, &pld)
 		if err != nil {
-			return false, "", fmt.Errorf("could not unmarshal item: %v", err)
+			return false, fmt.Errorf("could not unmarshal item: %v", err)
 		}
 		if pld.IntID != "" {
-			return true, pld.IntID, nil
+			return true, nil
 		}
-		return false, "", fmt.Errorf("exact entry has no internal identifier")
+		return false, fmt.Errorf("exact entry has no internal identifier")
 	}
-	return false, "", nil
+	fmt.Println("no exact match found")
+	return false, nil
 }
 
-func (d *Dynamo) writeItem(p Payload) error {
+func (d *Dynamo) writeItem(inc *Incident) error {
 
-	item, err := dynamodbattribute.MarshalMap(p)
+	item, err := dynamodbattribute.MarshalMap(inc)
 	if err != nil {
 		return fmt.Errorf("could not marshal db record: %s", err)
 	}
 
 	input := &dynamodb.PutItemInput{
-		Item:      item,
 		TableName: aws.String(os.Getenv("TABLE_NAME")),
+		Item:      item,
 	}
 
 	_, err = d.DynamoDB.PutItem(input)
 	if err != nil {
-		return fmt.Errorf("could not put to db: %v", err)
+		return err
 	}
 
-	fmt.Printf("new item added with external identifier: %v", p.ExtID)
+	fmt.Printf("\nnew item added with identifier: %v\n", inc.Identifier)
 	return nil
 }

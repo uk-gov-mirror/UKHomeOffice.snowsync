@@ -53,7 +53,7 @@ func createIncident(b []byte) (string, error) {
 	}
 
 	// todo: remove request bin suffix
-	req, err := c.NewRequest("/p61p774/rest/servicedeskapi/request/", "POST", user, pass, b)
+	req, err := c.NewRequest("/rest/servicedeskapi/request/", "POST", user, pass, b)
 	if err != nil {
 		return "", fmt.Errorf("could not make request: %v", err)
 	}

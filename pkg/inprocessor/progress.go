@@ -47,7 +47,7 @@ func (p *Processor) progress(pay Incident) (string, error) {
 	}
 
 	// todo: remove request bin suffix
-	path, err := url.Parse("/p61p774/rest/api/2/issue/" + pay.ExtID + "/transitions")
+	path, err := url.Parse("/rest/api/2/issue/" + pay.ExtID + "/transitions")
 	if err != nil {
 		return "", fmt.Errorf("could not form JSD URL: %v", err)
 	}

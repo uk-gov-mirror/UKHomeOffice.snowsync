@@ -54,7 +54,7 @@ func updateIncident(b []byte) (string, error) {
 	if ok {
 		delete(dat, "external_identifier")
 		// todo: remove request bin suffix
-		path, err := url.Parse("/p61p774/rest/api/2/issue/" + eid + "/comment")
+		path, err := url.Parse("/rest/api/2/issue/" + eid + "/comment")
 		if err != nil {
 			return "", fmt.Errorf("could not form JSD URL: %v", err)
 		}
@@ -62,6 +62,8 @@ func updateIncident(b []byte) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("could marshal JSD payload: %v", err)
 		}
+		fmt.Printf("debug payload: %+v", string(out))
+
 		req, err := c.NewRequest(path.Path, "POST", user, pass, out)
 		if err != nil {
 			return "", fmt.Errorf("could not make request: %v", err)

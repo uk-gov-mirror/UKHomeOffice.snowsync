@@ -48,6 +48,8 @@ func CallSNow(ms map[string]interface{}) (string, error) {
 		return "", fmt.Errorf("failed to marshal snow payload: %v", err)
 	}
 
+	fmt.Printf("debug payload %+v", string(out))
+
 	req, err := c.NewRequest("", "POST", user, pass, out)
 	if err != nil {
 		return "", fmt.Errorf("could not make request: %v", err)

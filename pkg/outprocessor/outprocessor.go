@@ -41,11 +41,10 @@ type Processor struct {
 	db Dynamo
 }
 
-// Payload represents outbound messsages
-type Payload struct {
-	Cluster     string `json:"cluster,omitempty"`
+// Incident represents outbound messsages
+type Incident struct {
 	Comment     string `json:"comments,omitempty"`
-	Component   string `json:"components,omitempty"`
+	CommentID   string `json:"comment_sysid,omitempty"`
 	Description string `json:"description,omitempty"`
 	ExtID       string `json:"external_identifier,omitempty"`
 	IntID       string `json:"internal_identifier,omitempty"`
@@ -95,7 +94,7 @@ func Process(event *events.SQSEvent) error {
 // subProcess processes individual SQS messages
 func (p Processor) subProcess(m *events.SQSMessage) error {
 	// convert inbound SQS message to custom payload type
-	var pay Payload
+	var pay Incident
 	err := json.Unmarshal([]byte(m.Body), &pay)
 	if err != nil {
 		return fmt.Errorf("could not unmarshal SQS message: %v", err)

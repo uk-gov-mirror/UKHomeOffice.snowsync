@@ -130,7 +130,7 @@ func TestWrite(t *testing.T) {
 
 			db := getMockDB()
 
-			pay := Payload{
+			pay := Incident{
 				ExtID: tc.extid,
 			}
 
@@ -162,7 +162,7 @@ func TestCreate(t *testing.T) {
 
 			p := getMockCreateProcesor()
 
-			pay := Payload{
+			pay := Incident{
 				ExtID:   tc.externalIdentifier,
 				Comment: tc.comments,
 			}
@@ -198,7 +198,7 @@ func TestUpdate(t *testing.T) {
 
 			p := getMockUpdateProcesor()
 
-			pay := Payload{
+			pay := Incident{
 				IntID:   tc.internalIdentifier,
 				Comment: tc.comments,
 			}
@@ -242,7 +242,7 @@ func TestProcess(t *testing.T) {
 			}
 
 			os.Setenv("TABLE_NAME", "foo")
-			pay := Payload{
+			pay := Incident{
 				ExtID:   tc.externalIdentifier,
 				Comment: tc.comments,
 			}

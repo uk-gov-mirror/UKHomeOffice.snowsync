@@ -11,7 +11,7 @@ import (
 )
 
 // create invokes the caller Lambda function to create a new ticket
-func (f *Forwarder) create(pay Payload) (string, error) {
+func (f *Forwarder) create(pay Incident) (string, error) {
 
 	// construct payload with SNow required headers
 	dat := make(map[string]interface{})
@@ -46,7 +46,7 @@ func (f *Forwarder) create(pay Payload) (string, error) {
 }
 
 // update invokes the caller Lambda function to update an existing ticket
-func (f *Forwarder) update(pay Payload) error {
+func (f *Forwarder) update(pay Incident) error {
 
 	// construct payload with SNow required headers
 	dat := make(map[string]interface{})

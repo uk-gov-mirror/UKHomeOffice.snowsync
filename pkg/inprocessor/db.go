@@ -56,7 +56,7 @@ func (d *Dynamo) checkExact(p Incident) (bool, string, error) {
 		},
 	}
 
-	// look for external_id and comment match
+	// look for internal_id and comment match
 	resp, err := d.DynamoDB.GetItem(exact)
 	if err != nil {
 		return false, "", fmt.Errorf("could not get item: %v", err)

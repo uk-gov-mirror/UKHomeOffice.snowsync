@@ -126,12 +126,6 @@ func TestIncident(t *testing.T) {
 			if ia.incident.Identifier != tc.issueID {
 				t.Errorf("expected %v, got %v", tc.issueID, ia.incident.Identifier)
 			}
-			if ia.incident.Cluster != tc.cluster {
-				t.Errorf("expected %v, got %v", tc.cluster, ia.incident.Cluster)
-			}
-			if ia.incident.Component != tc.component {
-				t.Errorf("expected %v, got %v", tc.status, ia.incident.Status)
-			}
 			if ia.incident.Priority != tc.priority {
 				t.Errorf("expected %v, got %v", tc.priority, ia.incident.Priority)
 			}

@@ -9,9 +9,8 @@ import (
 
 // Incident is a type of ticket
 type Incident struct {
-	Cluster     string `json:"cluster,omitempty"`
 	Comment     string `json:"comments,omitempty"`
-	Component   string `json:"components,omitempty"`
+	CommentID   string `json:"comment_sysid,omitempty"`
 	Description string `json:"description,omitempty"`
 	Identifier  string `json:"external_identifier,omitempty"`
 	Priority    string `json:"priority,omitempty"`
@@ -29,7 +28,6 @@ func NewIncident() *Incident {
 func checkIncidentVars(input string) error {
 
 	vars := []string{
-		"COMPONENT_FIELD",
 		"DESCRIPTION_FIELD",
 		"ISSUE_ID_FIELD",
 		"PRIORITY_FIELD",
@@ -60,8 +58,8 @@ func parseIncident(input string) (*ticketUpdate, error) {
 
 	i := NewIncident()
 
-	i.Cluster = gjson.Get(input, os.Getenv("CLUSTER_FIELD")).Str
-	i.Component = gjson.Get(input, os.Getenv("COMPONENT_FIELD")).Str
+	i.Comment = gjson.Get(input, os.Getenv("COMMENT_FIELD")).Str
+	i.CommentID = gjson.Get(input, os.Getenv("COMMENT_ID_FIELD")).Str
 	i.Description = gjson.Get(input, os.Getenv("DESCRIPTION_FIELD")).Str
 	i.Identifier = gjson.Get(input, os.Getenv("ISSUE_ID_FIELD")).Str
 	i.Priority = gjson.Get(input, os.Getenv("PRIORITY_FIELD")).Str
@@ -70,11 +68,15 @@ func parseIncident(input string) (*ticketUpdate, error) {
 
 	commentAuthor := gjson.Get(input, os.Getenv("COMMENT_AUTHOR_FIELD")).Str
 	commentBody := gjson.Get(input, os.Getenv("COMMENT_BODY_FIELD")).Str
-	i.Comment = fmt.Sprintf("%v: %v", commentAuthor, commentBody)
+	i.Comment = fmt.Sprintf("%v (%v) %v", commentAuthor, i.CommentID, commentBody)
 
-	// add / modify SNOW required attributes
+	// make SNOW required modifications
 	i.Service = "AWS ACP"
-
+	// initialise comment id if nil as it's being used as sort key
+	if i.CommentID == "" {
+		i.CommentID = "0"
+	}
+	// transform status
 	switch i.Status {
 	case "Open":
 		i.Status = "1"

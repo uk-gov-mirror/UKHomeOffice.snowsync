@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-func (d *Dynamo) checkPartial(p Payload) (bool, string, error) {
+func (d *Dynamo) checkPartial(p Incident) (bool, string, error) {
 
 	partial := &dynamodb.QueryInput{
 		TableName:              aws.String(os.Getenv("TABLE_NAME")),
@@ -28,7 +28,7 @@ func (d *Dynamo) checkPartial(p Payload) (bool, string, error) {
 	}
 
 	if int(*resp.Count) != 0 {
-		var pld Payload
+		var pld Incident
 		err = dynamodbattribute.UnmarshalMap(resp.Items[0], &pld)
 		if err != nil {
 			return false, "", fmt.Errorf("could not unmarshal item: %v", err)
@@ -41,7 +41,7 @@ func (d *Dynamo) checkPartial(p Payload) (bool, string, error) {
 	return false, "", nil
 }
 
-func (d *Dynamo) checkExact(p Payload) (bool, string, error) {
+func (d *Dynamo) checkExact(p Incident) (bool, string, error) {
 
 	exact := &dynamodb.GetItemInput{
 		TableName: aws.String(os.Getenv("TABLE_NAME")),
@@ -49,8 +49,8 @@ func (d *Dynamo) checkExact(p Payload) (bool, string, error) {
 			"external_identifier": {
 				S: aws.String(p.ExtID),
 			},
-			"comments": {
-				S: aws.String(p.Comment),
+			"comment_sysid": {
+				S: aws.String(p.CommentID),
 			},
 		},
 	}
@@ -62,7 +62,7 @@ func (d *Dynamo) checkExact(p Payload) (bool, string, error) {
 	}
 
 	if resp.Item != nil {
-		var pld Payload
+		var pld Incident
 		err = dynamodbattribute.UnmarshalMap(resp.Item, &pld)
 		if err != nil {
 			return false, "", fmt.Errorf("could not unmarshal item: %v", err)
@@ -75,7 +75,7 @@ func (d *Dynamo) checkExact(p Payload) (bool, string, error) {
 	return false, "", nil
 }
 
-func (d *Dynamo) writeItem(p Payload) error {
+func (d *Dynamo) writeItem(p Incident) error {
 
 	item, err := dynamodbattribute.MarshalMap(p)
 	if err != nil {

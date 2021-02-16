@@ -88,6 +88,18 @@ func parseIncident(input string) (*ticketUpdate, error) {
 		return nil, fmt.Errorf("invalid ticket status %v", i.Status)
 	}
 
+	// transform priority
+	switch i.Priority {
+	case "P1 - Production system down":
+		i.Priority = "1"
+	case "P2 - Production system impaired":
+		i.Priority = "2"
+	case "P3 - Non production system impaired":
+		i.Priority = "3"
+	case "P4 - General request":
+		i.Priority = "4"
+	}
+
 	u := ticketUpdate{incident: i}
 	fmt.Printf("parsed incident: %v, status: %v\n", i.Identifier, i.Status)
 

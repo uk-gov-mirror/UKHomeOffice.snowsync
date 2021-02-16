@@ -1,6 +1,6 @@
 .PHONY: clean vet test build zip
 
-default: clean vet test build zip
+default: clean vet build zip
 
 clean:
 	rm -rf bin/*

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -73,9 +74,25 @@ func Handle(request *events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}, nil
 	}
 
+	msg := struct {
+		ExtID string `json:"external_identifier,omitempty"`
+	}{
+		ExtID: strings.Trim(res, `", \`),
+	}
+
+	bmsg, err := json.Marshal(msg)
+	if err != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusInternalServerError,
+			Body:       err.Error(),
+		}, nil
+	}
+
+	fmt.Printf("debug msg %v\n", string(bmsg))
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
-		Body:       fmt.Sprintf("incident %v updated\n", res),
+		Body:       string(bmsg),
 	}, nil
 }
 

@@ -135,6 +135,8 @@ func (r *Receiver) CallJSD(b []byte) error {
 // Handle deals with the incoming request from SNow
 func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
+	fmt.Printf("debbug incoming payload: %v", request.Body)
+
 	err := r.AddUpdateToDB([]byte(request.Body))
 	if err != nil {
 		return events.APIGatewayProxyResponse{

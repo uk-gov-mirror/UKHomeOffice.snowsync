@@ -15,12 +15,15 @@ func transformUpdate(p Incident) (map[string]interface{}, error) {
 
 	dat := make(map[string]interface{})
 
-	v := Values{
-		Comment: fmt.Sprintf("Comment added on ServiceNow (%v): %v", p.CommentID, p.Comment),
-	}
+	// v := Values{
+	// 	Comment: fmt.Sprintf("Comment added on ServiceNow (%v): %v", p.CommentID, p.Comment),
+	// }
+	// var vv []string
+	// vv = append(vv, v.Comment)
 
 	dat["external_identifier"] = p.ExtID
-	dat["body"] = v
+	dat["body"] = fmt.Sprintf("Comment added on ServiceNow (%v): %v", p.CommentID, p.Comment)
+
 	return dat, nil
 
 }

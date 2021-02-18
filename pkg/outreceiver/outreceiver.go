@@ -27,19 +27,32 @@ type Receiver struct {
 	ddb DBUpdater
 }
 
+// Values make up the JSD payload
+type Values struct {
+	Transition *transition `json:"transition,omitempty"`
+}
+
+type transition struct {
+	ID string `json:"id,omitempty"`
+}
+
 // NewReceiver returns a new receiver
 func NewReceiver(du DBUpdater) *Receiver {
 	return &Receiver{ddb: du}
 }
 
-// AddUpdateToDB adds a SNow generated update to DynamoDB
-func (r *Receiver) AddUpdateToDB(b []byte) error {
+func (r *Receiver) add2DB(b []byte) error {
 
 	// get id and comments
 	dat := map[string]string{}
 	err := json.Unmarshal(b, &dat)
 	if err != nil {
 		return fmt.Errorf("could not unmarshal update: %v", err)
+	}
+
+	_, ok := dat["status"]
+	if ok {
+		return nil
 	}
 
 	rec := struct {
@@ -80,8 +93,85 @@ func (r *Receiver) AddUpdateToDB(b []byte) error {
 	return nil
 }
 
-// AddCommenttoJSD adds a SNow generated update to JSD issue
-func (r *Receiver) AddCommenttoJSD(b []byte) error {
+func (r *Receiver) progressJSD(b []byte) error {
+
+	dat := map[string]string{}
+	err := json.Unmarshal(b, &dat)
+	if err != nil {
+		return fmt.Errorf("could not unmarshal JSD payload: %v", err)
+	}
+
+	eid := dat["external_identifier"]
+	sta := dat["status"]
+
+	// only allowing Investigating and Resolved at MVP stage
+	var t string
+	switch sta {
+	case "1":
+		fmt.Printf("ignoring status: %v", sta)
+		return nil
+	case "10100":
+		t = "11"
+	case "3":
+		t = "71"
+	default:
+		return fmt.Errorf("unexpected ticket status: %v", sta)
+	}
+
+	v := Values{
+		Transition: &transition{ID: t},
+	}
+
+	out, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("could not marshal JSD payload: %v", err)
+	}
+
+	base, ok := os.LookupEnv("JSD_URL")
+	if !ok {
+		return fmt.Errorf("no JSD URL provided: %v", err)
+	}
+
+	user, ok := os.LookupEnv("ADMIN_USER")
+	if !ok {
+		return fmt.Errorf("missing username")
+	}
+	pass, ok := os.LookupEnv("ADMIN_PASS")
+	if !ok {
+		return fmt.Errorf("missing password")
+	}
+
+	jurl, err := url.Parse(base + "/rest/api/2/issue/" + eid + "/transitions")
+	if err != nil {
+		return fmt.Errorf("could not form JSD URL: %v", err)
+	}
+
+	c := &client.Client{
+		BaseURL:    jurl,
+		HTTPClient: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	req, err := c.NewRequest("", "POST", user, pass, out)
+	if err != nil {
+		return fmt.Errorf("could not make request: %v", err)
+	}
+
+	res, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("could not call JSD: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
+		return fmt.Errorf("JSD call failed with status code: %v", res.StatusCode)
+	}
+
+	fmt.Printf("%v updated on JSD", eid)
+	return nil
+
+}
+
+func (r *Receiver) callJSD(b []byte) error {
 
 	// get id and comments
 	dat := map[string]string{}
@@ -159,7 +249,7 @@ func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGat
 
 	fmt.Printf("debug incoming payload: %v", request.Body)
 
-	err := r.AddUpdateToDB([]byte(request.Body))
+	err := r.add2DB([]byte(request.Body))
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusBadRequest,
@@ -167,15 +257,38 @@ func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGat
 		}, nil
 	}
 
-	err = r.AddCommenttoJSD([]byte(request.Body))
+	dat := map[string]string{}
+	err = json.Unmarshal([]byte(request.Body), &dat)
+	if err != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusInternalServerError,
+			Body:       err.Error(),
+		}, nil
+	}
+
+	_, ok := dat["status"]
+	if !ok {
+		err = r.progressJSD([]byte(request.Body))
+		if err != nil {
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Body:       err.Error(),
+			}, nil
+		}
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusOK,
+		}, nil
+	}
+
+	err = r.callJSD([]byte(request.Body))
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusBadRequest,
 			Body:       err.Error(),
 		}, nil
 	}
-
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 	}, nil
+
 }

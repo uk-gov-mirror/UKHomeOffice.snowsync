@@ -50,7 +50,6 @@ func updateIncident(b []byte) (string, error) {
 	eid, ok := dat["external_identifier"].(string)
 	if ok {
 		delete(dat, "external_identifier")
-		// todo: remove request bin suffix
 		path, err := url.Parse("/rest/api/2/issue/" + eid + "/comment")
 		if err != nil {
 			return "", fmt.Errorf("could not form JSD URL: %v", err)

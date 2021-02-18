@@ -54,7 +54,6 @@ func createIncident(b []byte) (string, error) {
 		HTTPClient: &http.Client{Timeout: 5 * time.Second},
 	}
 
-	// todo: remove request bin suffix
 	req, err := c.NewRequest("/rest/servicedeskapi/request/", "POST", user, pass, b)
 	if err != nil {
 		return "", fmt.Errorf("could not make request: %v", err)

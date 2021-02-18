@@ -13,6 +13,8 @@ import (
 
 func transformCreate(p Incident) (map[string]interface{}, error) {
 
+	fmt.Printf("debug payload into transform %+v", p)
+
 	dat := make(map[string]interface{})
 	dat["serviceDeskId"] = "1"
 	dat["requestTypeId"] = "14"
@@ -25,7 +27,7 @@ func transformCreate(p Incident) (map[string]interface{}, error) {
 	v := Values{
 		Priority: &pri,
 		Summary:  p.Summary,
-		Description: fmt.Sprintf("Incident %v raised on ServiceNow by %v with priority %v. Description: %v. First comment (%v): %v",
+		Description: fmt.Sprintf("Incident %v raised on ServiceNow by %v with priority %v.\n Description: %v.\n Initial comment (%v): %v",
 			p.IntID, p.Reporter, p.Priority, p.Description, p.CommentID, p.Comment),
 	}
 

@@ -80,8 +80,8 @@ func (r *Receiver) AddUpdateToDB(b []byte) error {
 	return nil
 }
 
-// CallJSD adds a SNow generated update to JSD issue
-func (r *Receiver) CallJSD(b []byte) error {
+// AddCommenttoJSD adds a SNow generated update to JSD issue
+func (r *Receiver) AddCommenttoJSD(b []byte) error {
 
 	// get id and comments
 	dat := map[string]string{}
@@ -167,7 +167,7 @@ func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGat
 		}, nil
 	}
 
-	err = r.CallJSD([]byte(request.Body))
+	err = r.AddCommenttoJSD([]byte(request.Body))
 	if err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusBadRequest,

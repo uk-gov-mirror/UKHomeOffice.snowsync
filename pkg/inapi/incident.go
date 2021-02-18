@@ -88,6 +88,15 @@ func parseIncident(input string) (*Incident, error) {
 		i.Comment = i.IntComment
 	}
 
+	// if i.CommentID == "" {
+	// 	i.CommentID = i.IntCommentID
+	// 	i.Comment = i.IntComment
+	// }
+
+	// if i.CommentID == "" {
+	// 	i.CommentID = "0"
+	// }
+
 	fmt.Printf("parsed incident: %v, status: %v, comment id: %v\n", i.IntID, i.Status, i.CommentID)
 
 	return i, nil

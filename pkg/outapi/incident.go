@@ -72,6 +72,12 @@ func parseIncident(input string) (*ticketUpdate, error) {
 
 	// make SNOW required modifications
 	i.Service = "AWS ACP"
+
+	if commentAuthor == "automationuser" {
+		fmt.Printf("ignoring comment left by automationuser")
+		return nil, nil
+	}
+
 	// initialise comment id if nil as it's being used as sort key
 	if i.CommentID == "" {
 		i.CommentID = "0"
@@ -79,7 +85,7 @@ func parseIncident(input string) (*ticketUpdate, error) {
 	// transform status
 	switch i.Status {
 	case "Open":
-		i.Status = "1"
+		i.Status = "2"
 	case "Investigating", "Identified", "Monitoring":
 		i.Status = "22"
 	case "Resolved", "Closed":

@@ -73,3 +73,38 @@ func (f *Forwarder) update(pay Incident) error {
 	}
 	return nil
 }
+
+func (f *Forwarder) progress(pay Incident) error {
+
+	// construct payload with SNow required headers
+	dat := make(map[string]interface{})
+	dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+	dat["internal_identifier"] = pay.IntID
+	// remove irrelevant keys from payload
+	pay.IntID = ""
+	pay.Comment = ""
+	pay.Priority = ""
+
+	if pay.Status == "6" {
+		pay.Resolution = "done"
+	}
+
+	dat["payload"] = pay
+
+	progressUpdate, err := json.Marshal(dat)
+	if err != nil {
+		return fmt.Errorf("could not marshal updater payload: %v", err)
+	}
+
+	// invoke caller Lambda function
+	input := &lambda.InvokeInput{
+		FunctionName: aws.String(os.Getenv("CALLER_LAMBDA")),
+		Payload:      progressUpdate,
+	}
+
+	_, err = f.Lambda.Invoke(input)
+	if err != nil {
+		return fmt.Errorf("could not invoke caller: %v", err)
+	}
+	return nil
+}

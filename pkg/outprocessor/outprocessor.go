@@ -50,6 +50,7 @@ type Incident struct {
 	IntID       string `json:"internal_identifier,omitempty"`
 	MsgID       string `json:"messageid,omitempty"`
 	Priority    string `json:"priority,omitempty"`
+	Resolution  string `json:"resolution_code,omitempty"`
 	Service     string `json:"business_service,omitempty"`
 	Status      string `json:"state,omitempty"`
 	Summary     string `json:"title,omitempty"`
@@ -133,15 +134,16 @@ func (p Processor) subProcess(m *events.SQSMessage) error {
 		return nil
 	case !exact && partial:
 		fmt.Println("updating ticket with new comments...")
-		// update ticket on SNow
-		err = p.lm.update(pay)
-		if err != nil {
-			return fmt.Errorf("could not update ticket: %v", err)
-		}
 		// update DB with existing key
 		err := p.db.writeItem(pay)
 		if err != nil {
 			return fmt.Errorf("could not update DB item: %v", err)
+		}
+		// remove irrelevant keys and update ticket on SNow
+		pay.Priority = ""
+		err = p.lm.update(pay)
+		if err != nil {
+			return fmt.Errorf("could not update ticket: %v", err)
 		}
 		return nil
 	case exact:
@@ -151,9 +153,8 @@ func (p Processor) subProcess(m *events.SQSMessage) error {
 		if err != nil {
 			return fmt.Errorf("could not update DB item: %v", err)
 		}
-		// remove comments and update ticket on SNow
-		pay.Comment = ""
-		err = p.lm.update(pay)
+		// progress ticket on SNow
+		err = p.lm.progress(pay)
 		if err != nil {
 			return fmt.Errorf("could not update ticket: %v", err)
 		}

@@ -42,7 +42,26 @@ func (r *Receiver) AddUpdateToDB(b []byte) error {
 		return fmt.Errorf("could not unmarshal update: %v", err)
 	}
 
-	item, err := dynamodbattribute.MarshalMap(dat)
+	rec := struct {
+		ExtID      string `json:"external_identifier,omitempty"`
+		Comment    string `json:"comment,omitempty"`
+		Comid      string `json:"comment_sysid,omitempty"`
+		Intcomment string `json:"internal_comment,omitempty"`
+		Intcomid   string `json:"internal_comment_sysid,omitempty"`
+	}{
+		ExtID:      dat["external_identifier"],
+		Comment:    dat["comment"],
+		Comid:      dat["comment_sysid"],
+		Intcomment: dat["internal_comment"],
+		Intcomid:   dat["internal_comment_sysid"],
+	}
+
+	if rec.Comid == "" {
+		rec.Comid = rec.Intcomid
+		rec.Comment = rec.Intcomment
+	}
+
+	item, err := dynamodbattribute.MarshalMap(rec)
 	if err != nil {
 		return fmt.Errorf("could not marshal db record: %s", err)
 	}
@@ -72,9 +91,12 @@ func (r *Receiver) CallJSD(b []byte) error {
 	}
 	eid := dat["external_identifier"]
 	com := dat["comment"]
+	comid := dat["comment_sysid"]
 	icom := dat["internal_comment"]
+	icomid := dat["internal_comment_sysid"]
 
-	if icom != "" {
+	if comid == "" {
+		comid = icomid
 		com = icom
 	}
 
@@ -135,7 +157,7 @@ func (r *Receiver) CallJSD(b []byte) error {
 // Handle deals with the incoming request from SNow
 func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	fmt.Printf("debbug incoming payload: %v", request.Body)
+	fmt.Printf("debug incoming payload: %v", request.Body)
 
 	err := r.AddUpdateToDB([]byte(request.Body))
 	if err != nil {

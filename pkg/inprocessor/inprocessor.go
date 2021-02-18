@@ -152,7 +152,7 @@ func Process(in Incident) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("could not update DB item: %v", err)
 		}
-		// remove comments and update ticket on SNow
+		// remove comments and update ticket
 		//in.Comment = []string{""}
 		in.Comment = ""
 		eid, err = p.progress(in)

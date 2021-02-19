@@ -46,6 +46,8 @@ func newForwarder() *Forwarder {
 // Handle deals with the incoming request
 func Handle(request *events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
+	fmt.Printf("debug into inapi %v", request.Body)
+
 	h := NewHandler(*newForwarder())
 
 	inc, err := parseIncident(request.Body)

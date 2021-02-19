@@ -107,6 +107,9 @@ func (r *Receiver) progressJSD(b []byte) error {
 	// only allowing Investigating and Resolved at MVP stage
 	var t string
 	switch sta {
+	case "":
+		fmt.Printf("ignoring blank status %v", sta)
+		return nil
 	case "1":
 		fmt.Printf("ignoring status: %v", sta)
 		return nil

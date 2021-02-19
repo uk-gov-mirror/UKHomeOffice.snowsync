@@ -31,6 +31,9 @@ func (p *Processor) progress(pay Incident) (string, error) {
 	// only allowing Investtigating and Resolved at MVP stage
 	var t string
 	switch pay.Status {
+	case "":
+		fmt.Printf("ignoring blank status %v", pay.Status)
+		return pay.ExtID, nil
 	case "1":
 		fmt.Printf("ignoring status %v", pay.Status)
 		return pay.ExtID, nil

@@ -144,6 +144,12 @@ func Process(in Incident) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("could not update DB item: %v", err)
 		}
+
+		// this is a workaround
+		_, err = p.progress(in)
+		if err != nil {
+			return "", fmt.Errorf("could not update ticket: %v", err)
+		}
 		return eid, nil
 	case exact:
 		fmt.Println("no new comments, updating status only...")

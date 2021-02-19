@@ -243,7 +243,7 @@ func (r *Receiver) callJSD(b []byte) error {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("JSD call failed with status code: %v", res.StatusCode)
 	}
 

@@ -156,6 +156,8 @@ func (r *Receiver) progressJSD(b []byte) error {
 		return fmt.Errorf("could not make request: %v", err)
 	}
 
+	fmt.Printf("debug request in progressJSD %+v", req)
+
 	res, err := c.Do(req)
 	if err != nil {
 		return fmt.Errorf("could not call JSD: %v", err)
@@ -230,6 +232,8 @@ func (r *Receiver) callJSD(b []byte) error {
 		return fmt.Errorf("could not make request: %v", err)
 	}
 
+	fmt.Printf("debug request in callJSD %+v", req)
+
 	res, err := c.Do(req)
 	if err != nil {
 		return fmt.Errorf("could not call JSD: %v", err)
@@ -267,7 +271,7 @@ func (r *Receiver) Handle(request *events.APIGatewayProxyRequest) (events.APIGat
 	}
 
 	_, ok := dat["status"]
-	if !ok {
+	if ok {
 		err = r.progressJSD([]byte(request.Body))
 		if err != nil {
 			return events.APIGatewayProxyResponse{

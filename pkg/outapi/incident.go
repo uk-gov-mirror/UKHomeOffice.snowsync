@@ -68,7 +68,7 @@ func parseIncident(input string) (*ticketUpdate, error) {
 
 	commentAuthor := gjson.Get(input, os.Getenv("COMMENT_AUTHOR_FIELD")).Str
 	commentBody := gjson.Get(input, os.Getenv("COMMENT_BODY_FIELD")).Str
-	i.Comment = fmt.Sprintf("%v (%v) %v", commentAuthor, i.CommentID, commentBody)
+	i.Comment = fmt.Sprintf("%v %v %v", commentAuthor, i.CommentID, commentBody)
 
 	// make SNOW required modifications
 	i.Service = "AWS ACP"

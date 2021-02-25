@@ -73,8 +73,8 @@ func parseIncident(input string) (*ticketUpdate, error) {
 	// make SNOW required modifications
 	i.Service = "AWS ACP"
 
-	if commentAuthor == "automationuser" {
-		fmt.Printf("ignoring comment left by automationuser")
+	if commentAuthor == "ServiceNow" {
+		fmt.Printf("ignoring comment left by ServiceNow")
 		return nil, nil
 	}
 

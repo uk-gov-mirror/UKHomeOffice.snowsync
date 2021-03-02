@@ -94,6 +94,17 @@ func (d *Dynamo) writeItem(p Incident) error {
 		return fmt.Errorf("could not put to db: %v", err)
 	}
 
+	// add to other table as well
+	input = &dynamodb.PutItemInput{
+		Item:      item,
+		TableName: aws.String(os.Getenv("OUT_TABLE_NAME")),
+	}
+
+	_, err = d.DynamoDB.PutItem(input)
+	if err != nil {
+		return fmt.Errorf("could not put to db: %v", err)
+	}
+
 	fmt.Printf("new item added with internal identifier: %v", p.IntID)
 	return nil
 }

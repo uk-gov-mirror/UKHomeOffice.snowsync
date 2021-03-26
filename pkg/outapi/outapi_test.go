@@ -16,7 +16,7 @@ import (
 
 type mockSQS struct {
 	sqsiface.SQSAPI
-	err error
+	//err error
 }
 
 func getMockSQS() sqsiface.SQSAPI {
@@ -29,7 +29,6 @@ func (ms *mockSQS) SendMessage(*sqs.SendMessageInput) (*sqs.SendMessageOutput, e
 
 // setEnv sets test envars
 func setEnv() {
-
 	os.Setenv("CLUSTER_FIELD", "issue.fields.cluster")
 	os.Setenv("COMPONENT_FIELD", "issue.fields.component")
 	os.Setenv("COMMENT_AUTHOR_FIELD", "comment.author.name")
@@ -74,7 +73,7 @@ func TestIncident(t *testing.T) {
 		{name: "happy", input: 0, issueID: "abc-1", status: "open", summary: "system down",
 			description: "not responding for 10 mins", priority: "P1", component: "system",
 			cluster: "prod", comment: "bob: first comment"},
-		{name: "unhappy", input: 1, err: "could not parse the ticket: missing value in payload: issue.fields.component"},
+		{name: "unhappy", input: 1, err: "could not parse the ticket: missing value in payload"},
 	}
 
 	for _, tc := range tt {
@@ -106,7 +105,7 @@ func TestIncident(t *testing.T) {
 			}
 
 			if tc.err != "" {
-				if msg := res.Body; msg != tc.err {
+				if msg := res.Body; !strings.Contains(msg, tc.err) {
 					t.Errorf("expected error %q, got: %q", tc.err, msg)
 				}
 				return

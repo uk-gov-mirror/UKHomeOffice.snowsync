@@ -24,12 +24,12 @@ type mockDynamoDB struct {
 
 type mockCreateForwarder struct {
 	lambdaiface.LambdaAPI
-	err error
+	//err error
 }
 
 type mockUpdateForwarder struct {
 	lambdaiface.LambdaAPI
-	err error
+	//err error
 }
 
 func getMockDB() *Dynamo {

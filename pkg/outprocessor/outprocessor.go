@@ -141,7 +141,7 @@ func (p Processor) subProcess(m *events.SQSMessage) error {
 		}
 		// remove irrelevant keys and update ticket on SNow
 		pay.Priority = ""
-		//	pay.Status = ""
+		pay.Description = ""
 		err = p.lm.update(pay)
 		if err != nil {
 			return fmt.Errorf("could not update ticket: %v", err)

@@ -235,7 +235,7 @@ func (r *Receiver) callJSD(b []byte) error {
 		return fmt.Errorf("could not make request: %v", err)
 	}
 
-	fmt.Printf("debug request in callJSD %+v", req)
+	//fmt.Printf("debug request in callJSD %+v", req)
 
 	res, err := c.Do(req)
 	if err != nil {
@@ -243,7 +243,7 @@ func (r *Receiver) callJSD(b []byte) error {
 	}
 	defer res.Body.Close()
 
-	fmt.Printf("debug jsd response: %v", res.Body)
+	//fmt.Printf("debug jsd response: %v", res.Body)
 
 	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("JSD call failed with status code: %v", res.StatusCode)

@@ -58,7 +58,7 @@ func updateIncident(b []byte) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("could marshal JSD payload: %v", err)
 		}
-		fmt.Printf("debug payload: %+v", string(out))
+		//fmt.Printf("debug payload: %+v", string(out))
 
 		req, err := c.NewRequest(path.Path, "POST", user, pass, out)
 		if err != nil {

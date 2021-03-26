@@ -13,7 +13,7 @@ import (
 
 func transformCreate(p Incident) (map[string]interface{}, error) {
 
-	fmt.Printf("debug payload into transform %+v", p)
+	//fmt.Printf("debug payload into transform %+v", p)
 
 	dat := make(map[string]interface{})
 	dat["serviceDeskId"] = "1"

@@ -13,22 +13,36 @@ import (
 
 func transformCreate(p Incident) (map[string]interface{}, error) {
 
-	//fmt.Printf("debug payload into transform %+v", p)
+	fmt.Printf("debug payload into transform %+v", p)
 
 	dat := make(map[string]interface{})
 	dat["serviceDeskId"] = "1"
 	dat["requestTypeId"] = "14"
 
-	// priority sync is out of scope for MVP so hardcoding
+	switch p.Priority {
+	case "1":
+		p.Priority = "P1 - Production system down"
+	case "2":
+		p.Priority = "P2 - Production system impaired"
+	case "3":
+		p.Priority = "P3 - Non production system impaired"
+	case "4":
+		p.Priority = "P4 - General request"
+	case "5":
+		p.Priority = "P4 - General request"
+	default:
+		return nil, fmt.Errorf("unexpected priority: %v", p.Priority)
+	}
+
 	pri := priority{
-		Name: "P4 - General request",
+		Name: p.Priority,
 	}
 
 	v := Values{
 		Priority: &pri,
 		Summary:  p.Summary,
-		Description: fmt.Sprintf("Incident %v raised on ServiceNow by %v with priority %v.\n Description: %v.\n Initial comment (%v %v): %v %v",
-			p.IntID, p.Reporter, p.Priority, p.Description, p.CommentID, p.IntCommentID, p.Comment, p.IntComment),
+		Description: fmt.Sprintf("Incident %v raised on ServiceNow by %v\n Description: %v.\n Initial comment (%v %v): %v %v",
+			p.IntID, p.Reporter, p.Description, p.CommentID, p.IntCommentID, p.Comment, p.IntComment),
 	}
 
 	dat["requestFieldValues"] = v

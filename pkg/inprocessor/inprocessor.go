@@ -135,7 +135,7 @@ func Process(in Incident) (string, error) {
 	case !exact && partial:
 		fmt.Println("updating ticket with new comments...")
 		// update ticket on SNow
-		eid, err = p.update(in)
+		err = p.update(in)
 		if err != nil {
 			return "", fmt.Errorf("could not update ticket: %v", err)
 		}
@@ -144,7 +144,6 @@ func Process(in Incident) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("could not update DB item: %v", err)
 		}
-
 		// this is a workaround
 		_, err = p.progress(in)
 		if err != nil {

@@ -3,102 +3,167 @@ package inprocessor
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/UKHomeOffice/snowsync/pkg/client"
 )
 
-func transformUpdate(p Incident) (map[string]interface{}, error) {
-
-	dat := make(map[string]interface{})
-
-	dat["external_identifier"] = p.ExtID
-	dat["body"] = fmt.Sprintf("Comment added on ServiceNow (%v): %v", p.CommentID, p.Comment)
-
-	return dat, nil
-
-}
-
-func updateIncident(b []byte) (string, error) {
+func addComment(i Incident) error {
 
 	user, pass, base, err := getEnv()
 	if err != nil {
-		return "", fmt.Errorf("environment error: %v", err)
+		return fmt.Errorf("environment error: %v", err)
 	}
 
 	surl, err := url.Parse(base)
 	if err != nil {
-		return "", fmt.Errorf("could not form JSD URL: %v", err)
+		return fmt.Errorf("could not form JSD URL: %v", err)
 	}
 
-	// create client and request
+	// create payload
+	dat := make(map[string]interface{})
+	dat["body"] = fmt.Sprintf("Comment added on ServiceNow (%v): %v", i.CommentID, i.Comment)
+
+	out, err := json.Marshal(&dat)
+	if err != nil {
+		return fmt.Errorf("could marshal JSD payload: %v", err)
+	}
+
+	// create HTTP request
 	c := &client.Client{
 		BaseURL:    surl,
 		HTTPClient: &http.Client{Timeout: 5 * time.Second},
 	}
-
-	// remove the need for this switcheroo
-	var dat map[string]interface{}
-	err = json.Unmarshal(b, &dat)
+	path, err := url.Parse("/rest/api/2/issue/" + i.ExtID + "/comment")
 	if err != nil {
-		return "", fmt.Errorf("could not decode payload to get external id: %v", err)
+		return fmt.Errorf("could not form JSD URL: %v", err)
 	}
 
-	eid, ok := dat["external_identifier"].(string)
-	if ok {
-		delete(dat, "external_identifier")
-		path, err := url.Parse("/rest/api/2/issue/" + eid + "/comment")
-		if err != nil {
-			return "", fmt.Errorf("could not form JSD URL: %v", err)
-		}
-		out, err := json.Marshal(&dat)
-		if err != nil {
-			return "", fmt.Errorf("could marshal JSD payload: %v", err)
-		}
-		//fmt.Printf("debug payload: %+v", string(out))
-
-		req, err := c.NewRequest(path.Path, "POST", user, pass, out)
-		if err != nil {
-			return "", fmt.Errorf("could not make request: %v", err)
-		}
-		// make HTTP request to JSD
-		res, err := c.Do(req)
-		if err != nil {
-			return "", fmt.Errorf("could not call JSD: %v", err)
-		}
-		defer res.Body.Close()
-
-		// read HTTP response
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return "", fmt.Errorf("could not read JSD response body %v", err)
-		}
-
-		fmt.Printf("sent request, JSD replied with: %v", string(body))
-		return eid, nil
+	req, err := c.NewRequest(path.Path, "POST", user, pass, out)
+	if err != nil {
+		return fmt.Errorf("could not make request: %v", err)
 	}
-	return "", fmt.Errorf("no identifier in payload")
+
+	// make HTTP request to JSD
+	res, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("could not call JSD: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("JSD call failed with status code: %v", res.StatusCode)
+	}
+
+	fmt.Printf("%v updated on JSD\n", i.ExtID)
+	return nil
 }
 
-func (p *Processor) update(pay Incident) (string, error) {
+func updatePriority(i Incident) error {
 
-	v, err := transformUpdate(pay)
+	user, pass, base, err := getEnv()
 	if err != nil {
-		return "", fmt.Errorf("could not transform creator payload: %v", err)
+		return fmt.Errorf("environment error: %v", err)
 	}
 
-	upd, err := json.Marshal(v)
+	surl, err := url.Parse(base)
 	if err != nil {
-		return "", fmt.Errorf("could not marshal updater payload: %v", err)
+		return fmt.Errorf("could not form JSD URL: %v", err)
 	}
 
-	out, err := updateIncident(upd)
-	if err != nil {
-		return "", fmt.Errorf("could not invoke a create call: %v", err)
+	// transform priority
+	type set struct {
+		Name string `json:"name"`
 	}
 
-	return out, nil
+	type priority []struct {
+		Action set `json:"set,omitempty"`
+	}
+
+	type priorityUpdate struct {
+		Pri priority `json:"priority,omitempty"`
+	}
+
+	switch i.Comment {
+	case "ServiceNow updated Priority to 1":
+		i.Priority = "P1 - Production system down"
+	case "ServiceNow updated Priority to 2":
+		i.Priority = "P2 - Production system impaired"
+	case "ServiceNow updated Priority to 3":
+		i.Priority = "P3 - Non production system impaired"
+	case "ServiceNow updated Priority to 4":
+		i.Priority = "P4 - General request"
+	case "ServiceNow updated Priority to 5":
+		i.Priority = "P4 - General request"
+	default:
+		return fmt.Errorf("unexpected priority: %v", i.Priority)
+	}
+
+	var pu priorityUpdate
+	var pa priority
+
+	pa = make(priority, 0)
+	pa = append(pa, struct {
+		Action set "json:\"set,omitempty\""
+	}{set{Name: i.Priority}})
+	pu.Pri = pa
+
+	// create payload
+	dat := make(map[string]interface{})
+	dat["update"] = pu
+
+	out, err := json.Marshal(&dat)
+	if err != nil {
+		return fmt.Errorf("could marshal JSD payload: %v", err)
+	}
+
+	// create HTTP request
+	c := &client.Client{
+		BaseURL:    surl,
+		HTTPClient: &http.Client{Timeout: 5 * time.Second},
+	}
+	path, err := url.Parse("/rest/api/2/issue/" + i.ExtID)
+	if err != nil {
+		return fmt.Errorf("could not form JSD URL: %v", err)
+	}
+	req, err := c.NewRequest(path.Path, "PUT", user, pass, out)
+	if err != nil {
+		return fmt.Errorf("could not make request: %v", err)
+	}
+
+	// make HTTP request to JSD
+	res, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("could not call JSD: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("JSD call failed with status code: %v", res.StatusCode)
+	}
+
+	fmt.Printf("%v updated on JSD", i.ExtID)
+	return nil
+}
+
+func (p *Processor) update(i Incident) error {
+
+	fmt.Printf("debug payload into update %+v", i)
+
+	if strings.Contains(i.Comment, "ServiceNow updated Priority") {
+		err := updatePriority(i)
+		if err != nil {
+			return fmt.Errorf("could not make priority payload: %v", err)
+		}
+		return nil
+	}
+	err := addComment(i)
+	if err != nil {
+		return fmt.Errorf("could not make comment payload: %v", err)
+	}
+
+	return nil
 }

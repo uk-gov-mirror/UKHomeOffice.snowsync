@@ -1,5 +1,4 @@
-// Package client is a HTTP client.
-package client
+package caller
 
 import (
 	"bytes"

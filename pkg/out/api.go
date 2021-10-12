@@ -75,6 +75,8 @@ func parseIncident(input string) (*Incident, error) {
 
 	// assign to an organisation in SNOW
 	switch i.Service {
+	case "59":
+		i.Service = "CSOC"
 	case "9":
 		i.Service = "Cyclamen IT Platform Local"
 	case "58":
@@ -92,7 +94,6 @@ func parseIncident(input string) (*Incident, error) {
 
 	// transform comments to fit target schema
 	commentAuthor := gjson.Get(input, os.Getenv("COMMENT_AUTHOR_FIELD")).Str
-	// TODO - check if this step is still needed.
 	if commentAuthor == "ServiceNow" {
 		fmt.Println("ignoring comment left on JSD by ServiceNow service account")
 		return i, nil
@@ -128,7 +129,7 @@ func parseIncident(input string) (*Incident, error) {
 		return nil, nil
 	}
 
-	fmt.Printf("parsed incident: %+v\n", i)
+	fmt.Printf("parsed incident: %v, status: %v, comment id: %v\n", i.Identifier, i.Status, i.CommentID)
 
 	return i, nil
 }

@@ -105,6 +105,8 @@ func parseIncident(input string) (*Incident, error) {
 
 	// assign to an organisation in JSD
 	switch i.Service {
+	case "CSOC":
+		i.Service = "59"
 	case "Cyclamen IT Platform Local":
 		i.Service = "9"
 	case "I-LEAP":
@@ -115,7 +117,7 @@ func parseIncident(input string) (*Incident, error) {
 		i.Service = "65"
 	}
 
-	fmt.Printf("parsed incident: %v, status: %v, comment id: %v\n", i.IntID, i.Status, i.CommentID)
+	fmt.Printf("parsed incident: %v, status: %v, comment id: %v\n", i.Identifier, i.Status, i.CommentID)
 
 	return i, nil
 }

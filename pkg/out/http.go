@@ -31,7 +31,6 @@ func create(inc *Incident) (string, error) {
 	}
 
 	// check for and return internal identifier
-	//iid := strings.Trim(string(out.Payload), `", \`)
 	if iid != "" {
 		return iid, nil
 	}
@@ -42,7 +41,14 @@ func update(inc *Incident) error {
 
 	// construct payload with SNOW required headers
 	dat := make(map[string]interface{})
-	dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+
+	switch inc.Service {
+	case "CSOC":
+		dat["messageid"] = "HO_SIAM_IN_REST_SIT_UPDATE_JSON_ACP_SIRT_Update"
+	default:
+		dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+	}
+
 	dat["internal_identifier"] = inc.IntID
 	// avoid repeating internal identifier in payload
 	inc.IntID = ""
@@ -64,7 +70,14 @@ func progress(inc *Incident) error {
 
 	// construct payload with SNOW required headers
 	dat := make(map[string]interface{})
-	dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+
+	switch inc.Service {
+	case "CSOC":
+		dat["messageid"] = "HO_SIAM_IN_REST_SIT_UPDATE_JSON_ACP_SIRT_Update"
+	default:
+		dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+	}
+
 	dat["internal_identifier"] = inc.IntID
 	// remove irrelevant keys from payload
 	inc.IntID = ""

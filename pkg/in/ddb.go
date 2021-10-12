@@ -100,6 +100,6 @@ func (d *Dynamo) writeItem(inc *Incident) error {
 		return fmt.Errorf("could not put to db: %v", err)
 	}
 
-	fmt.Printf("\nnew item added with internal identifier: %v\n", inc.IntID)
+	fmt.Printf("\nitem added to db with internal identifier: %v\n", inc.Identifier)
 	return nil
 }

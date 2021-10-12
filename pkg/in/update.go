@@ -95,7 +95,7 @@ func (p *Processor) update(inc *Incident) (string, error) {
 
 	out, err := updateIncident(upd)
 	if err != nil {
-		return "", fmt.Errorf("could not invoke a create call: %v", err)
+		return "", fmt.Errorf("could not make an update call: %v", err)
 	}
 
 	return out, nil

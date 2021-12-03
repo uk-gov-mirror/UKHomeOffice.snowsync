@@ -1,4 +1,4 @@
-## snowsync
+## SnowSync
 
 These AWS Lambda functions aim to create a bi-directional incident ticketing integration between ACP Service Desk and ServiceNow.
 

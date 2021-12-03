@@ -96,6 +96,6 @@ func (d *Dynamo) writeItem(inc *Incident) error {
 		return err
 	}
 
-	fmt.Printf("\nnew item added with identifier: %v\n", inc.Identifier)
+	fmt.Printf("\nitem added to db with identifier: %v\n", inc.Identifier)
 	return nil
 }

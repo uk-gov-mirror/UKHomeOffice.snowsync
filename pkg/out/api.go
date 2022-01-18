@@ -80,7 +80,7 @@ func parseIncident(input string) (*Incident, error) {
 	case "9":
 		i.Service = "Cyclamen IT Platform Local"
 	case "58":
-		i.Service = "I-LEAP"
+		i.Service = "PPPT - ILEAP"
 	case "45":
 		i.Service = "Semaphore"
 	default:
@@ -129,7 +129,7 @@ func parseIncident(input string) (*Incident, error) {
 		return nil, nil
 	}
 
-	fmt.Printf("parsed incident: %v, status: %v, comment id: %v\n", i.Identifier, i.Status, i.CommentID)
+	fmt.Printf("parsed incident: %v from %v, status: %v, comment id: %v\n", i.ExtID, i.Service, i.Status, i.CommentID)
 
 	return i, nil
 }

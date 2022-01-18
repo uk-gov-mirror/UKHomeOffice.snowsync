@@ -109,7 +109,7 @@ func parseIncident(input string) (*Incident, error) {
 		i.Service = "59"
 	case "Cyclamen IT Platform Local":
 		i.Service = "9"
-	case "I-LEAP":
+	case "PPPT - ILEAP":
 		i.Service = "58"
 	case "Semaphore":
 		i.Service = "45"
@@ -117,7 +117,7 @@ func parseIncident(input string) (*Incident, error) {
 		i.Service = "65"
 	}
 
-	fmt.Printf("parsed incident: %v, status: %v, comment id: %v\n", i.Identifier, i.Status, i.CommentID)
+	fmt.Printf("parsed incident: %v from %v, status: %v, comment id: %v\n", i.IntID, i.Service, i.Status, i.CommentID)
 
 	return i, nil
 }

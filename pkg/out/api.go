@@ -106,7 +106,7 @@ func parseIncident(input string) (*Incident, error) {
 	switch i.Status {
 	case "Open":
 		i.Status = "2"
-	case "Investigating", "Identified", "Monitoring", "Escalated":
+	case "Investigating", "Identified", "Monitoring", "Escalated", "Escalated to Appvia":
 		i.Status = "22"
 	case "Resolved", "Closed":
 		i.Status = "6"

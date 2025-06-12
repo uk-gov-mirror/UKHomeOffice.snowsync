@@ -1,25 +1,24 @@
 package in
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 // DB defines client methods
 type DB interface {
-	GetItem(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
-	PutItem(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
-	Query(*dynamodb.QueryInput) (*dynamodb.QueryOutput, error)
+	GetItem(context.Context, *dynamodb.GetItemInput, ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
+	PutItem(context.Context, *dynamodb.PutItemInput, ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
+	Query(context.Context, *dynamodb.QueryInput, ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error)
 }
 
 // Dynamo is a DB client
 type Dynamo struct {
-	DynamoDB dynamodbiface.DynamoDBAPI
+	DynamoDB DB
 }
 
 // Processor can implement client methods
@@ -32,10 +31,14 @@ func newProcessor(d Dynamo) *Processor {
 }
 
 func newDBClient() *Dynamo {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	ddb := dynamodb.New(sess, &aws.Config{Region: aws.String(os.Getenv("AWS_REGION"))})
+	cfg, err := config.LoadDefaultConfig(context.Background(),
+		config.WithRegion(os.Getenv("AWS_REGION")),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("unable to load SDK config: %v", err))
+	}
+
+	ddb := dynamodb.NewFromConfig(cfg)
 	return &Dynamo{DynamoDB: ddb}
 }
 

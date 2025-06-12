@@ -1,12 +1,14 @@
 package out
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 func (d *Dynamo) checkPartial(inc *Incident) (bool, string, error) {
@@ -16,21 +18,21 @@ func (d *Dynamo) checkPartial(inc *Incident) (bool, string, error) {
 	partial := &dynamodb.QueryInput{
 		TableName:              aws.String(os.Getenv("TABLE_NAME")),
 		KeyConditionExpression: aws.String("id = :id"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":id": {
-				S: aws.String(inc.Identifier),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":id": &types.AttributeValueMemberS{
+				Value: inc.Identifier,
 			},
 		},
 	}
 
-	resp, err := d.DynamoDB.Query(partial)
+	resp, err := d.DynamoDB.Query(context.Background(), partial)
 	if err != nil {
 		return false, "", fmt.Errorf("could not get item: %v", err)
 	}
 
-	if int(*resp.Count) != 0 {
+	if int(resp.Count) != 0 {
 		var pld Incident
-		err = dynamodbattribute.UnmarshalMap(resp.Items[0], &pld)
+		err = attributevalue.UnmarshalMap(resp.Items[0], &pld)
 		if err != nil {
 			return false, "", fmt.Errorf("could not unmarshal item: %v", err)
 		}
@@ -49,24 +51,24 @@ func (d *Dynamo) checkExact(inc *Incident) (bool, error) {
 
 	exact := &dynamodb.GetItemInput{
 		TableName: aws.String(os.Getenv("TABLE_NAME")),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(inc.Identifier),
+		Key: map[string]types.AttributeValue{
+			"id": &types.AttributeValueMemberS{
+				Value: inc.Identifier,
 			},
-			"comment_sysid": {
-				S: aws.String(inc.CommentID),
+			"comment_sysid": &types.AttributeValueMemberS{
+				Value: inc.CommentID,
 			},
 		},
 	}
 
-	resp, err := d.DynamoDB.GetItem(exact)
+	resp, err := d.DynamoDB.GetItem(context.Background(), exact)
 	if err != nil {
 		return false, fmt.Errorf("could not get item: %v", err)
 	}
 
 	if resp.Item != nil {
 		var pld Incident
-		err = dynamodbattribute.UnmarshalMap(resp.Item, &pld)
+		err = attributevalue.UnmarshalMap(resp.Item, &pld)
 		if err != nil {
 			return false, fmt.Errorf("could not unmarshal item: %v", err)
 		}
@@ -81,7 +83,7 @@ func (d *Dynamo) checkExact(inc *Incident) (bool, error) {
 
 func (d *Dynamo) writeItem(inc *Incident) error {
 
-	item, err := dynamodbattribute.MarshalMap(inc)
+	item, err := attributevalue.MarshalMap(inc)
 	if err != nil {
 		return fmt.Errorf("could not marshal db record: %s", err)
 	}
@@ -91,7 +93,7 @@ func (d *Dynamo) writeItem(inc *Incident) error {
 		Item:      item,
 	}
 
-	_, err = d.DynamoDB.PutItem(input)
+	_, err = d.DynamoDB.PutItem(context.Background(), input)
 	if err != nil {
 		return err
 	}

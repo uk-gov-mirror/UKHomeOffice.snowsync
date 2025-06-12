@@ -16,7 +16,8 @@ func create(inc *Incident) (string, error) {
 
 	// construct payload with SNOW required headers
 	dat := make(map[string]interface{})
-	dat["messageid"] = "HO_SIAM_IN_REST_INC_POST_JSON_ACP_Incident_Create"
+	// TODO: Check this is correct when ServiceNow creates the ServiceNow app/service.
+	dat["messageid"] = "HO_SIAM_IN_REST_INC_POST_JSON_CORECLOUD_Incident_Create"
 	dat["external_identifier"] = inc.Identifier
 	dat["payload"] = inc
 
@@ -44,9 +45,11 @@ func update(inc *Incident) error {
 
 	switch inc.Service {
 	case "CSOC":
-		dat["messageid"] = "HO_SIAM_IN_REST_SIT_UPDATE_JSON_ACP_SIRT_Update"
+		// TODO: Check this is correct when ServiceNow creates the ServiceNow app/service.
+		dat["messageid"] = "HO_SIAM_IN_REST_SIT_UPDATE_JSON_CORECLOUD_SIRT_Update"
 	default:
-		dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+		// TODO: Check this is correct when ServiceNow creates the ServiceNow app/service.
+		dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_CORECLOUD_Incident_Update"
 	}
 
 	dat["internal_identifier"] = inc.IntID
@@ -73,9 +76,11 @@ func progress(inc *Incident) error {
 
 	switch inc.Service {
 	case "CSOC":
-		dat["messageid"] = "HO_SIAM_IN_REST_SIT_UPDATE_JSON_ACP_SIRT_Update"
+		// TODO: Check this is correct when ServiceNow creates the ServiceNow app/service.
+		dat["messageid"] = "HO_SIAM_IN_REST_SIT_UPDATE_JSON_CORECLOUD_SIRT_Update"
 	default:
-		dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_ACP_Incident_Update"
+		// TODO: Check this is correct when ServiceNow creates the ServiceNow app/service.
+		dat["messageid"] = "HO_SIAM_IN_REST_INC_UPDATE_JSON_CORECLOUD_Incident_Update"
 	}
 
 	dat["internal_identifier"] = inc.IntID

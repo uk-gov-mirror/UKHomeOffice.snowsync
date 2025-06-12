@@ -10,7 +10,7 @@ steps:
 
 - name: make
   pull: if-not-exists
-  image: golang:1.16
+  image: golang:1.24.4
   commands:
   - apt update && apt install -y zip
   - mkdir bin
